@@ -182,6 +182,9 @@ textarea{width:100%;min-height:110px;background:var(--surface2);border:1px solid
 .status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
 .dot{width:7px;height:7px;border-radius:99px;background:var(--under);flex:none}
 .dot.local{background:var(--ink3)}
+.ver{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink3);
+  letter-spacing:.06em;padding:6px 0 4px}
+.ver b{font-family:var(--sans);font-weight:400;letter-spacing:.14em}
 
 /* ---------- tabs ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);
@@ -288,6 +291,7 @@ textarea{width:100%;min-height:110px;background:var(--surface2);border:1px solid
       <p>把本月的科目與「預定」金額，重設回 Excel 支出表的原始設定。實際金額與明細會清空。</p>
       <button class="btn" id="resetBtn">重設本月為預設值</button>
     </div>
+    <div class="ver" id="ver"></div>
   </div>
 </div>
 
@@ -317,6 +321,7 @@ var DEFAULT_ITEMS = [
   {key:"other", name:"其他(車險)", plan:3000}
 ];
 var DEFAULT_INCOME_PLAN = 65000;
+var APP_VERSION = "2026.09.02";   // 改版時只要改這一行
 var LIFE_KEY = "life";
 
 /* ============ 工具 ============ */
@@ -787,6 +792,7 @@ Store.loadAll();
 openMonth(state.ym);
 
 (function(){
+  $("ver").textContent = "月結帳本  v" + APP_VERSION;
   var dot = $("storeDot"), msg = $("storeMsg");
   if(Store.ok){
     dot.classList.remove("local");
