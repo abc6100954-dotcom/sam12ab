@@ -139,6 +139,46 @@ h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--s
 .msg.err{color:var(--over)} .msg.ok{color:var(--under)}
 .ver{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:18px;letter-spacing:.06em}
 input[type=file]{display:none}
+
+/* 功能選單 */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+.tabs button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-height:64px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink2);padding:6px 2px}
+.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
+.soon{margin-top:16px;padding:18px 16px}
+.soon b{font-family:var(--serif);font-size:16px}
+.soon p{margin:6px 0 0;font-size:14px;color:var(--ink2)}
+.dock .in.one{grid-template-columns:1fr}
+
+/* 施工日誌 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 10px}
+.chips button{border:1px solid var(--rule);background:var(--surface2);border-radius:99px;padding:6px 11px;font-size:14px;min-height:36px}
+.chips button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.jrow{padding:8px 0}
+.jrow + .jrow{border-top:1px solid var(--rule)}
+.jrow .lab{font-size:14px;color:var(--ink2);padding-top:6px}
+.qty{display:flex;align-items:center;gap:10px;padding:10px 0}
+.qty + .qty{border-top:1px solid var(--rule)}
+.qty .nm{flex:1;min-width:0;font-size:14px;line-height:1.35}
+.qty .nm i{display:block;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.qty input{width:88px;flex:none;text-align:right;font-family:var(--mono);font-size:16px;padding:8px 10px;
+  border:1px solid var(--rule);border-radius:10px;background:var(--surface2)}
+.qty input:not(:placeholder-shown){border-color:var(--accent);background:var(--accent-soft)}
+.qty .u{width:30px;flex:none;font-size:12px;color:var(--ink3)}
+details.grp{border-top:1px solid var(--rule)}
+details.grp:first-of-type{border-top:0}
+details.grp summary{list-style:none;cursor:pointer;padding:12px 0;font-weight:500;display:flex;align-items:center;gap:8px}
+details.grp summary::-webkit-details-marker{display:none}
+details.grp summary::before{content:"▸";color:var(--ink3);font-size:12px;transition:transform .15s}
+details.grp[open] summary::before{transform:rotate(90deg)}
+details.grp summary .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--accent)}
+.search{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:10px 12px;font-size:16px;margin:12px 0 4px}
+textarea.note{width:100%;min-height:72px;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);
+  padding:10px 12px;font:inherit;font-size:16px;color:var(--ink);resize:vertical;margin:4px 0 8px}
+select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:10px 12px;font-size:16px;color:var(--ink);margin:4px 0 8px}
+.pad{padding:4px 16px 8px}
+.warn{margin:10px 4px 0;font-size:13px;color:var(--over)}
 </style>
 </head>
 <body>
@@ -156,6 +196,22 @@ input[type=file]{display:none}
   <h2 class="sec">工程 <em>PROJECT</em></h2>
   <div class="card proj" id="projects" role="radiogroup" aria-label="工程"></div>
 
+  <nav class="tabs" role="tablist" aria-label="功能">
+    <button role="tab" data-view="photo">
+      <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/></svg>
+      上傳照片</button>
+    <button role="tab" data-view="journal">
+      <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+      施工日誌</button>
+    <button role="tab" data-view="check">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 9l2 2 4-4M8 16h8"/></svg>
+      自主檢查表</button>
+    <button role="tab" data-view="inspect">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M9 11l1.5 1.5L13.5 9"/></svg>
+      抽查驗紀錄</button>
+  </nav>
+
+<section id="view-photo" class="view">
   <h2 class="sec">日期與備註 <em>DETAIL</em></h2>
   <div class="card fields">
     <div class="fld">
@@ -175,9 +231,46 @@ input[type=file]{display:none}
     <div class="list" id="list"></div>
     <button class="retry" id="retryBtn" hidden>重試失敗的照片</button>
   </div>
+</section>
+
+<section id="view-journal" class="view" hidden>
+  <h2 class="sec">日期 <em>DATE</em></h2>
+  <div class="card fields">
+    <div class="fld">
+      <label for="jDate">日期</label>
+      <input type="date" id="jDate">
+      <span class="roc" id="jRoc"></span>
+    </div>
+  </div>
+  <div class="today" id="jStatus"></div>
+  <div id="jBody"></div>
+</section>
+
+<section id="view-check" class="view" hidden>
+  <div class="card soon">
+    <b>自主檢查表</b>
+    <p>準備中。請把自主檢查表的範本（Word 或 Excel）給我，就能照範本做成手機填寫。</p>
+  </div>
+</section>
+
+<section id="view-inspect" class="view" hidden>
+  <div class="card soon">
+    <b>抽查驗紀錄</b>
+    <p>準備中。請把抽查驗紀錄的範本（Word 或 Excel）給我，就能照範本做成手機填寫。</p>
+  </div>
+</section>
 </div>
 
-<div class="dock">
+<div class="dock" id="jDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="jSaveBtn">
+      <svg viewBox="0 0 24 24"><path d="M5 12l4.5 4.5L19 7"/></svg>
+      儲存日誌
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="photoDock">
   <div class="in">
     <button class="btn primary" id="camBtn">
       <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/></svg>
@@ -219,7 +312,7 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.09.26.2";
+var APP_VERSION = "2026.09.26.3";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -237,6 +330,7 @@ var state = {
   options: LS.get("options", null),
   project: LS.get("project", ""),
   category: FIXED_CATEGORY,
+  view: LS.get("view", "photo"),
   items: [],          // 佇列（也存在 IndexedDB）
   running: false
 };
@@ -295,7 +389,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); };
     pe.appendChild(b);
   });
 }
@@ -307,6 +401,7 @@ function loadOptions(){
     LS.set("options", state.options);
     renderOptions();
     refreshCount();
+    if(state.view === "journal") J.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -481,6 +576,282 @@ document.addEventListener("visibilitychange", function(){
 });
 $("date").addEventListener("input", function(){ $("date").dataset.auto = $("date").value === isoToday() ? "1" : "0"; });
 
+/* ---------- 功能選單 ---------- */
+function showView(v){
+  if(["photo", "journal", "check", "inspect"].indexOf(v) < 0) v = "photo";
+  state.view = v; LS.set("view", v);
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+    b.setAttribute("aria-selected", String(b.dataset.view === v));
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".view"), function(s){ s.hidden = s.id !== "view-" + v; });
+  $("photoDock").hidden = v !== "photo";
+  $("jDock").hidden = v !== "journal";
+  if(v === "journal") J.open();
+}
+Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+  b.onclick = function(){ showView(b.dataset.view); };
+});
+
+/* ---------- 施工日誌 ----------
+ * 表單照電腦匯出的設定產生（施工項目、工種、機具、材料）；按儲存送到後端，
+ * 電腦排程再寫進施工日誌 xlsm。每次修改都先存在手機（草稿），
+ * 沒網路時標記「待送出」，有網路自動補送。
+ */
+var WEATHER = ["晴", "多雲", "陰", "雨", "豪雨", "颱風"];
+var SAFETY = [
+  { k: "brief",     label: "1. 實施勤前教育",         opts: ["有", "無"] },
+  { k: "newWorker", label: "2. 新進勞工保險及教育訓練", opts: ["有", "無", "無新進勞工"] },
+  { k: "ppe",       label: "3. 勞工個人防護具",         opts: ["有", "無"] },
+  { k: "special",   label: "營造業特定施工項目",       opts: ["是", "否"] }
+];
+var SPECIAL_ITEMS = ["鋼構工程", "基礎工程", "施工塔架吊裝及模板工程", "庭園、景觀工程", "防水工程", "預拌混凝土工程"];
+var NOTES = [
+  { k: "important",   label: "重要事項紀錄" },
+  { k: "supervise",   label: "監督依照設計圖說施工（含檢驗停留點及施工抽查）" },
+  { k: "material",    label: "查核材料（含施工取樣試驗紀錄）" },
+  { k: "safety",      label: "督導工地職業安全衛生事項" },
+  { k: "subcontract", label: "通知協力廠商辦理事項" },
+  { k: "notify",      label: "通知廠商辦理事項（監造報表用）" }
+];
+
+var J = {
+  cfg: null, data: null, savedAt: "", dirty: false, loading: 0,
+
+  draftKey: function(){ return "jdraft." + state.project + "." + $("jDate").value; },
+  empty: function(){ return { weather: {}, notes: {}, safety: {}, qty: {}, counts: {} }; },
+
+  open: function(){
+    if(!$("jDate").value) $("jDate").value = isoToday();
+    $("jRoc").textContent = roc($("jDate").value);
+    var seq = ++J.loading;
+    J.cfg = LS.get("jcfg." + state.project, null);
+    J.loadDraftOrEmpty();
+    J.render();
+    if(!state.key) return;
+    api({ action: "journalConfig", project: state.project }).then(function(j){
+      if(seq !== J.loading) return;
+      J.cfg = j.config; LS.set("jcfg." + state.project, j.config);
+      return api({ action: "journalGet", project: state.project, date: $("jDate").value });
+    }).then(function(j){
+      if(!j || seq !== J.loading) return;
+      var d = LS.get(J.draftKey(), null);
+      J.savedAt = j.entry ? j.entry.savedAt : "";
+      if(d){
+        // 手機上有還沒送出的修改，以手機的為準
+        J.data = d.data; J.dirty = true;
+        J.render();
+        if(d.pending) J.flush();
+        return;
+      }
+      J.data = j.entry ? Object.assign(J.empty(), j.entry.data) : J.empty();
+      J.dirty = false;
+      J.render();
+    }).catch(function(e){
+      if(seq === J.loading){ J.render(); J.status(e.server ? e.message : "離線中：可以先填，存在手機，有網路再送出"); }
+    });
+  },
+
+  loadDraftOrEmpty: function(){
+    var d = LS.get(J.draftKey(), null);
+    J.data = d ? d.data : J.empty();
+    J.dirty = !!(d && d.pending);
+    J.savedAt = "";
+  },
+
+  status: function(t){ $("jStatus").textContent = t; },
+
+  statusFromState: function(){
+    if(J.dirty) J.status("有尚未送出的修改");
+    else if(J.savedAt){ var t = new Date(J.savedAt); J.status("已儲存　" + pad(t.getMonth() + 1) + "/" + pad(t.getDate()) + " " + pad(t.getHours()) + ":" + pad(t.getMinutes())); }
+    else J.status("這天還沒填");
+  },
+
+  touch: function(){
+    J.dirty = true;
+    LS.set(J.draftKey(), { pending: false, data: J.data });
+    J.status("有尚未送出的修改");
+  },
+
+  save: function(){
+    LS.set(J.draftKey(), { pending: true, data: J.data });
+    J.flush();
+  },
+
+  flush: function(){
+    var key = J.draftKey(), date = $("jDate").value, project = state.project, d = LS.get(key, null);
+    if(!d || !d.pending) return;
+    J.status("儲存中…");
+    $("jSaveBtn").disabled = true;
+    api({ action: "journalSave", project: project, date: date, data: d.data }).then(function(j){
+      LS.set(key, null);
+      if(key === J.draftKey()){ J.savedAt = j.savedAt; J.dirty = false; J.statusFromState(); }
+    }).catch(function(e){
+      if(key === J.draftKey()) J.status(e.server ? "儲存失敗：" + e.message : "離線中：已存在手機，有網路會自動送出");
+    }).then(function(){ $("jSaveBtn").disabled = false; });
+  },
+
+  // 開 APP 或恢復網路時，把所有「待送出」的日誌補送（不只目前這天）
+  flushAll: function(){
+    if(!state.key) return;
+    Object.keys(localStorage).forEach(function(k){
+      var m = k.match(/^photo\.jdraft\.(.+)\.(\d{4}-\d{2}-\d{2})$/);
+      if(!m) return;
+      var d = LS.get(k.slice(6), null);
+      if(!d || !d.pending) return;
+      api({ action: "journalSave", project: m[1], date: m[2], data: d.data }).then(function(j){
+        LS.set(k.slice(6), null);
+        if(m[1] === state.project && m[2] === $("jDate").value){ J.savedAt = j.savedAt; J.dirty = false; J.statusFromState(); }
+      }).catch(function(){});
+    });
+  },
+
+  el: function(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; },
+
+  chips: function(opts, get, set){
+    var box = J.el("div", "chips");
+    opts.forEach(function(o){
+      var b = J.el("button", "", o);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(get() === o));
+      b.onclick = function(){
+        set(get() === o ? "" : o); J.touch();
+        Array.prototype.forEach.call(box.children, function(x){ x.setAttribute("aria-pressed", String(get() === x.textContent)); });
+      };
+      box.appendChild(b);
+    });
+    return box;
+  },
+
+  numRow: function(name, sub, unit, map, key){
+    var row = J.el("div", "qty");
+    var nm = J.el("div", "nm", name);
+    if(sub) nm.appendChild(J.el("i", "", sub));
+    var inp = J.el("input");
+    inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "—";
+    inp.value = map[key] != null ? map[key] : "";
+    inp.oninput = function(){
+      var v = inp.value.replace(/[^\d.]/g, "");
+      if(v !== inp.value) inp.value = v;
+      if(v === "") delete map[key]; else map[key] = Number(v);
+      J.touch(); J.updateCounts();
+    };
+    row.append(nm, inp, J.el("span", "u", unit || ""));
+    row.dataset.search = (name + " " + (sub || "")).toLowerCase();
+    return row;
+  },
+
+  updateCounts: function(){
+    Array.prototype.forEach.call(document.querySelectorAll("details.grp"), function(g){
+      var n = Array.prototype.filter.call(g.querySelectorAll(".qty input"), function(i){ return i.value !== ""; }).length;
+      g.querySelector("summary .n").textContent = n ? "已填 " + n : "";
+    });
+  },
+
+  section: function(body, title, en){
+    var h = J.el("h2", "sec", title + " "); h.appendChild(J.el("em", "", en)); body.appendChild(h);
+    var c = J.el("div", "card pad"); body.appendChild(c); return c;
+  },
+
+  render: function(){
+    var body = $("jBody"); body.innerHTML = "";
+    var cfg = J.cfg, d = J.data || (J.data = J.empty());
+    ["weather", "notes", "safety", "qty", "counts"].forEach(function(k){ if(!d[k]) d[k] = {}; });
+
+    if(!cfg){
+      var c = J.el("div", "card soon");
+      c.append(J.el("b", "", "這個工程還沒設定施工日誌"),
+               J.el("p", "", "要在電腦的「日誌設定.json」指定這個工程的施工日誌 xlsm，電腦排程會把施工項目清單送過來。"));
+      body.appendChild(c);
+      $("jDock").hidden = true;
+      J.status(state.key ? "" : "請先到設定貼上密鑰");
+      return;
+    }
+    $("jDock").hidden = state.view !== "journal";
+    if($("jDate").value < cfg.start){
+      body.appendChild(J.el("div", "warn", "這天在開工日（" + roc(cfg.start) + "）之前，電腦匯入時會找不到這一天。"));
+    }
+
+    // 天氣
+    var w = J.section(body, "天氣", "WEATHER");
+    [["am", "上午"], ["pm", "下午"]].forEach(function(p){
+      var r = J.el("div", "jrow"); r.appendChild(J.el("div", "lab", p[1]));
+      r.appendChild(J.chips(WEATHER, function(){ return d.weather[p[0]] || ""; }, function(v){ d.weather[p[0]] = v; }));
+      w.appendChild(r);
+    });
+
+    // 施工項目本日完成數量
+    var q = J.section(body, "施工項目　本日完成數量", "QUANTITY");
+    var s = J.el("input", "search"); s.type = "search"; s.placeholder = "搜尋項目，例：鋼筋、模板";
+    q.appendChild(s);
+    var groups = [];
+    cfg.groups.forEach(function(g){
+      var det = J.el("details", "grp");
+      var sm = J.el("summary", "", g.name); sm.appendChild(J.el("span", "n", ""));
+      det.appendChild(sm);
+      g.items.forEach(function(it){
+        det.appendChild(J.numRow(it.name, it.no + "　契約 " + it.qty + " " + it.unit, it.unit, d.qty, it.key));
+      });
+      if(g.items.some(function(it){ return d.qty[it.key] != null; })) det.open = true;
+      q.appendChild(det); groups.push(det);
+    });
+    s.oninput = function(){
+      var t = s.value.trim().toLowerCase();
+      groups.forEach(function(det){
+        var any = false;
+        Array.prototype.forEach.call(det.querySelectorAll(".qty"), function(r){
+          var hit = !t || r.dataset.search.indexOf(t) >= 0; r.hidden = !hit; any = any || hit;
+        });
+        det.hidden = !any;
+        if(t) det.open = any;
+      });
+    };
+
+    // 出工、機具、材料
+    [["出工人數", "LABOR", cfg.labor, "人"], ["機具使用", "MACHINE", cfg.machines, "台"], ["材料", "MATERIAL", cfg.materials, ""]].forEach(function(x){
+      if(!x[2] || !x[2].length) return;
+      var c = J.section(body, x[0], x[1]);
+      x[2].forEach(function(it){ c.appendChild(J.numRow(it.name, "", it.unit || x[3], d.counts, it.key)); });
+    });
+
+    // 職安
+    var z = J.section(body, "職業安全衛生", "SAFETY");
+    SAFETY.forEach(function(f){
+      var r = J.el("div", "jrow"); r.appendChild(J.el("div", "lab", f.label));
+      r.appendChild(J.chips(f.opts, function(){ return d.safety[f.k] || ""; }, function(v){ d.safety[f.k] = v; }));
+      z.appendChild(r);
+    });
+    ["specialA", "specialB"].forEach(function(k, i){
+      var r = J.el("div", "jrow"); r.appendChild(J.el("div", "lab", "特定施工項目" + "AB"[i]));
+      var sel = J.el("select", "sel"); sel.appendChild(new Option("—", ""));
+      SPECIAL_ITEMS.forEach(function(o){ sel.appendChild(new Option(o, o)); });
+      sel.value = d.safety[k] || "";
+      sel.onchange = function(){ d.safety[k] = sel.value; J.touch(); };
+      r.appendChild(sel); z.appendChild(r);
+    });
+    var ro = J.el("div", "jrow"); ro.appendChild(J.el("div", "lab", "其他事項"));
+    var ta0 = J.el("textarea", "note"); ta0.value = d.safety.other || "";
+    ta0.oninput = function(){ d.safety.other = ta0.value; J.touch(); };
+    ro.appendChild(ta0); z.appendChild(ro);
+
+    // 記事
+    var n = J.section(body, "記事", "NOTES");
+    NOTES.forEach(function(f){
+      var r = J.el("div", "jrow"); r.appendChild(J.el("div", "lab", f.label));
+      var ta = J.el("textarea", "note"); ta.value = d.notes[f.k] || "";
+      ta.oninput = function(){ d.notes[f.k] = ta.value; J.touch(); };
+      r.appendChild(ta); n.appendChild(r);
+    });
+
+    body.appendChild(J.el("div", "today", "按「儲存日誌」後，電腦開著時約 10 分鐘內寫進「" + cfg.workbook + "」；Excel 正開著這個檔時，關掉後才會寫入。"));
+    J.updateCounts();
+    J.statusFromState();
+  }
+};
+
+$("jDate").onchange = function(){ J.open(); };
+$("jSaveBtn").onclick = function(){ J.save(); };
+window.addEventListener("online", function(){ J.flushAll(); });
+
 /* ---------- 啟動 ---------- */
 $("ver").textContent = APP_VERSION;
 $("date").value = isoToday(); $("date").dataset.auto = "1";
@@ -496,8 +867,9 @@ db.all().then(function(all){
     return true;
   });
   renderList();
+  showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); }
+  else { loadOptions(); run(); J.flushAll(); }
 });
 
 if("serviceWorker" in navigator){
