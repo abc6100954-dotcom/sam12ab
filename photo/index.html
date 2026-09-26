@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="工地照片上傳：選工程與類別，拍照後自動存進電腦的工程資料夾">
+<meta name="description" content="工地照片上傳：選工程，拍照後自動存進電腦的工程資料夾">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="工地照片">
@@ -86,14 +86,6 @@ h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--s
 .proj button[aria-checked="true"] .dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .proj button[aria-checked="true"]{font-weight:500}
 
-/* 類別：2 欄格子 */
-.cats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cats button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;
-  padding:10px 12px;min-height:52px;text-align:left;display:flex;align-items:baseline;gap:8px}
-.cats button i{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--ink3)}
-.cats button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.cats button[aria-checked="true"] i{color:inherit;opacity:.75}
-
 /* 日期、備註 */
 .fields{padding:4px 16px}
 .fld{display:flex;align-items:center;gap:12px;min-height:52px}
@@ -164,9 +156,6 @@ input[type=file]{display:none}
   <h2 class="sec">工程 <em>PROJECT</em></h2>
   <div class="card proj" id="projects" role="radiogroup" aria-label="工程"></div>
 
-  <h2 class="sec">照片類別 <em>CATEGORY</em></h2>
-  <div class="cats" id="cats" role="radiogroup" aria-label="照片類別"></div>
-
   <h2 class="sec">日期與備註 <em>DETAIL</em></h2>
   <div class="card fields">
     <div class="fld">
@@ -230,7 +219,9 @@ input[type=file]{display:none}
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.09.26";
+var APP_VERSION = "2026.09.26.2";
+// 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
+var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
 var API_URL = "https://script.google.com/macros/s/AKfycbwiUdGwP-lYDstZM-565a7PGuP-VOaXmmB-Tun-TtrqDsBJRbLMMgANvoInimWGQNBb/exec";
 
@@ -245,7 +236,7 @@ var state = {
   compress: LS.get("compress", true),
   options: LS.get("options", null),
   project: LS.get("project", ""),
-  category: LS.get("category", "6.2施工中"),
+  category: FIXED_CATEGORY,
   items: [],          // 佇列（也存在 IndexedDB）
   running: false
 };
@@ -295,7 +286,6 @@ function api(body){
 function renderOptions(){
   var o = state.options || { projects: [], categories: [] };
   if(o.projects.indexOf(state.project) < 0) state.project = o.projects[0] || "";
-  if(o.categories.indexOf(state.category) < 0) state.category = o.categories[0] || "";
 
   var pe = $("projects"); pe.innerHTML = "";
   if(!o.projects.length) pe.innerHTML = '<div class="empty">還沒載入工程清單，請確認密鑰與網路</div>';
@@ -307,19 +297,6 @@ function renderOptions(){
     b.lastChild.textContent = name;
     b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); };
     pe.appendChild(b);
-  });
-
-  var ce = $("cats"); ce.innerHTML = "";
-  o.categories.forEach(function(name){
-    var m = name.match(/^([\d.]+)(.*)$/) || [name, "", name];
-    var b = document.createElement("button");
-    b.setAttribute("role", "radio");
-    b.setAttribute("aria-checked", String(name === state.category));
-    b.innerHTML = "<i></i><span></span>";
-    b.firstChild.textContent = m[1];
-    b.lastChild.textContent = m[2];
-    b.onclick = function(){ state.category = name; LS.set("category", name); renderOptions(); refreshCount(); };
-    ce.appendChild(b);
   });
 }
 
@@ -392,7 +369,7 @@ function compress(file){
 
 function addFiles(files){
   if(!state.key){ openSheet("請先貼上上傳密鑰"); return; }
-  if(!state.project || !state.category){ alert("請先選擇工程和照片類別"); return; }
+  if(!state.project || !state.category){ alert("請先選擇工程"); return; }
   // 每張照片鎖定按下當時的工程／類別／日期／備註
   var meta = { project: state.project, category: state.category, date: $("date").value || isoToday(), note: $("note").value.trim() };
   var chain = Promise.resolve();
