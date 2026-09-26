@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="工地照片上傳：選工程與類別，拍照後自動存進電腦的工程資料夾">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="工地照片">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EFF2F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E151A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>工地照片</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600&display=swap">
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#EFF2F5; --surface:#FFFFFF; --surface2:#F6F9FA; --rule:#DBE3E9;
+  --ink:#17242F; --ink2:#5B6C7A; --ink3:#8A9AA6;
+  --accent:#24435E; --accent-soft:#E2ECF4; --on-accent:#FFFFFF;
+  --over:#AF3626; --over-bg:#FAE9E6;
+  --under:#1C6B52; --under-bg:#E2F0EA;
+  --shadow:0 1px 2px rgba(23,36,47,.06), 0 6px 18px rgba(23,36,47,.05);
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --serif:"Noto Serif TC",Georgia,"Songti TC",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151A; --surface:#17212A; --surface2:#1D2A33; --rule:#2B3A45;
+    --ink:#E7EDF2; --ink2:#9FB0BC; --ink3:#71838F;
+    --accent:#8AB8DC; --accent-soft:#1C2E3D; --on-accent:#0E151A;
+    --over:#EE8674; --over-bg:#33211E;
+    --under:#65C6A0; --under-bg:#163029;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151A; --surface:#17212A; --surface2:#1D2A33; --rule:#2B3A45;
+  --ink:#E7EDF2; --ink2:#9FB0BC; --ink3:#71838F;
+  --accent:#8AB8DC; --accent-soft:#1C2E3D; --on-accent:#0E151A;
+  --over:#EE8674; --over-bg:#33211E;
+  --under:#65C6A0; --under-bg:#163029;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.28);
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px calc(120px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 0 10px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;gap:12px}
+.top .t{flex:1;min-width:0}
+.top b{display:block;font-family:var(--serif);font-weight:600;font-size:20px;line-height:1.2}
+.top span{font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.06em}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--rule);
+  background:var(--surface);display:grid;place-items:center;flex:none}
+.iconbtn:active{background:var(--accent-soft)}
+.iconbtn svg{width:20px;height:20px;stroke:var(--ink2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- sections ---------- */
+h2.sec{font-family:var(--serif);font-weight:600;font-size:14px;letter-spacing:.06em;
+  margin:22px 2px 8px;display:flex;align-items:baseline;gap:8px}
+h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--sans);letter-spacing:.1em}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow)}
+
+/* 工程：單選卡片 */
+.proj{display:flex;flex-direction:column}
+.proj button{display:flex;align-items:center;gap:12px;text-align:left;padding:14px 16px;min-height:56px}
+.proj button + button{border-top:1px solid var(--rule)}
+.proj .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.proj button[aria-checked="true"] .dot{border-color:var(--accent)}
+.proj button[aria-checked="true"] .dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.proj button[aria-checked="true"]{font-weight:500}
+
+/* 類別：2 欄格子 */
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cats button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;
+  padding:10px 12px;min-height:52px;text-align:left;display:flex;align-items:baseline;gap:8px}
+.cats button i{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.cats button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cats button[aria-checked="true"] i{color:inherit;opacity:.75}
+
+/* 日期、備註 */
+.fields{padding:4px 16px}
+.fld{display:flex;align-items:center;gap:12px;min-height:52px}
+.fld + .fld{border-top:1px solid var(--rule)}
+.fld label{flex:none;width:44px;color:var(--ink2);font-size:14px}
+.fld input{flex:1;min-width:0;border:0;background:none;font-size:16px;padding:10px 0;outline:none}
+.fld input[type=date]{font-family:var(--mono)}
+.fld .roc{font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.today{margin:10px 4px 0;font-size:13px;color:var(--ink2)}
+.today b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+
+/* 上傳紀錄 */
+.list{padding:0 12px}
+.item{display:flex;align-items:center;gap:12px;padding:10px 4px}
+.item + .item{border-top:1px solid var(--rule)}
+.item img{width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
+.item .m{flex:1;min-width:0}
+.item .n{font-family:var(--mono);font-size:13px;word-break:break-all}
+.item .d{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:99px;flex:none;white-space:nowrap}
+.chip.wait{background:var(--surface2);color:var(--ink2)}
+.chip.up{background:var(--accent-soft);color:var(--accent)}
+.chip.ok{background:var(--under-bg);color:var(--under)}
+.chip.err{background:var(--over-bg);color:var(--over)}
+.empty{padding:22px 16px;text-align:center;color:var(--ink3);font-size:13px}
+.retry{display:block;width:100%;padding:12px;border-top:1px solid var(--rule);color:var(--accent);font-size:14px}
+
+/* 底部按鈕 */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
+  border-top:1px solid var(--rule);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.dock .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+.btn{height:54px;border-radius:14px;font-size:16px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid var(--rule);background:var(--surface)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn:active{filter:brightness(.92)}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* 設定 */
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(10,16,22,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet .panel{background:var(--bg);width:100%;max-width:520px;border-radius:20px 20px 0 0;
+  padding:18px 16px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h3{font-family:var(--serif);font-weight:600;font-size:18px;margin:0 0 4px}
+.sheet p{margin:0 0 14px;font-size:13px;color:var(--ink2)}
+.sheet .fld label{width:auto}
+.sheet .fld input{text-align:right;font-family:var(--mono);font-size:14px}
+.fld + .switch{border-top:1px solid var(--rule)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px}
+.switch input{width:22px;height:22px;accent-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.msg{font-size:13px;margin-top:10px;min-height:20px}
+.msg.err{color:var(--over)} .msg.ok{color:var(--under)}
+.ver{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:18px;letter-spacing:.06em}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="t">
+      <b>工地照片</b>
+      <span id="sub">—</span>
+    </div>
+    <button class="iconbtn" id="setBtn" aria-label="設定">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <h2 class="sec">工程 <em>PROJECT</em></h2>
+  <div class="card proj" id="projects" role="radiogroup" aria-label="工程"></div>
+
+  <h2 class="sec">照片類別 <em>CATEGORY</em></h2>
+  <div class="cats" id="cats" role="radiogroup" aria-label="照片類別"></div>
+
+  <h2 class="sec">日期與備註 <em>DETAIL</em></h2>
+  <div class="card fields">
+    <div class="fld">
+      <label for="date">日期</label>
+      <input type="date" id="date">
+      <span class="roc" id="roc"></span>
+    </div>
+    <div class="fld">
+      <label for="note">備註</label>
+      <input type="text" id="note" maxlength="40" placeholder="選填，放進檔名，例：3F樑鋼筋" enterkeyhint="done">
+    </div>
+  </div>
+  <div class="today" id="today"></div>
+
+  <h2 class="sec">上傳紀錄 <em>QUEUE</em></h2>
+  <div class="card">
+    <div class="list" id="list"></div>
+    <button class="retry" id="retryBtn" hidden>重試失敗的照片</button>
+  </div>
+</div>
+
+<div class="dock">
+  <div class="in">
+    <button class="btn primary" id="camBtn">
+      <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/></svg>
+      拍照
+    </button>
+    <button class="btn" id="pickBtn">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>
+      相簿
+    </button>
+  </div>
+</div>
+<input type="file" id="camInput" accept="image/*" capture="environment">
+<input type="file" id="pickInput" accept="image/*" multiple>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h3 id="sheetTitle">設定</h3>
+    <p id="sheetHint">上傳密鑰在電腦的「部署說明」裡，第一次使用時貼上即可。</p>
+    <div class="card fields">
+      <div class="fld">
+        <label for="keyInput">上傳密鑰</label>
+        <input type="text" id="keyInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="貼上密鑰">
+      </div>
+      <label class="switch">
+        <span>壓縮照片<br><small style="color:var(--ink3)">長邊 2560px，約 1MB，省行動數據</small></span>
+        <input type="checkbox" id="compress">
+      </label>
+    </div>
+    <div class="msg" id="sheetMsg"></div>
+    <div class="row2">
+      <button class="btn" id="clearBtn">清除已完成紀錄</button>
+      <button class="btn primary" id="saveBtn">儲存</button>
+    </div>
+    <div class="ver">工地照片 · <span id="ver"></span></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var APP_VERSION = "2026.09.26";
+// Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
+var API_URL = "https://script.google.com/macros/s/AKfycbwiUdGwP-lYDstZM-565a7PGuP-VOaXmmB-Tun-TtrqDsBJRbLMMgANvoInimWGQNBb/exec";
+
+var LS = {
+  get: function(k, d){ try{ var v = localStorage.getItem("photo." + k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set: function(k, v){ try{ localStorage.setItem("photo." + k, JSON.stringify(v)); }catch(e){} }
+};
+var $ = function(id){ return document.getElementById(id); };
+
+var state = {
+  key: LS.get("key", ""),
+  compress: LS.get("compress", true),
+  options: LS.get("options", null),
+  project: LS.get("project", ""),
+  category: LS.get("category", "6.2施工中"),
+  items: [],          // 佇列（也存在 IndexedDB）
+  running: false
+};
+
+/* ---------- 日期 ---------- */
+function pad(n){ return String(n).padStart(2, "0"); }
+function isoToday(){ var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function roc(iso){ var p = iso.split("-"); return (Number(p[0]) - 1911) + p[1] + p[2]; }
+function rocLong(iso){ var p = iso.split("-"); return "民國" + (Number(p[0]) - 1911) + "年" + Number(p[1]) + "月" + Number(p[2]) + "日"; }
+function hhmmss(){ var d = new Date(); return pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); }
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); }
+
+/* ---------- IndexedDB 佇列 ---------- */
+var dbp = new Promise(function(res, rej){
+  var r = indexedDB.open("site-photo", 1);
+  r.onupgradeneeded = function(){ r.result.createObjectStore("queue", { keyPath: "uid" }); };
+  r.onsuccess = function(){ res(r.result); };
+  r.onerror = function(){ rej(r.error); };
+});
+function tx(mode, fn){
+  return dbp.then(function(db){
+    return new Promise(function(res, rej){
+      var t = db.transaction("queue", mode), s = t.objectStore("queue"), out = fn(s);
+      t.oncomplete = function(){ res(out && out.result !== undefined ? out.result : undefined); };
+      t.onerror = function(){ rej(t.error); };
+    });
+  });
+}
+var db = {
+  all: function(){ return tx("readonly", function(s){ return s.getAll(); }); },
+  put: function(it){ var c = Object.assign({}, it); delete c.url; return tx("readwrite", function(s){ s.put(c); }); },
+  del: function(id){ return tx("readwrite", function(s){ s.delete(id); }); }
+};
+
+/* ---------- 後端 ---------- */
+function api(body){
+  body.key = state.key;
+  return fetch(API_URL, { method: "POST", body: JSON.stringify(body), redirect: "follow" })
+    .then(function(r){ if(!r.ok) throw new Error("伺服器回應 " + r.status); return r.json(); })
+    .then(function(j){
+      if(!j.ok){ var e = new Error(j.error || "失敗"); e.server = true; throw e; }
+      return j;
+    });
+}
+
+/* ---------- 畫面：工程、類別 ---------- */
+function renderOptions(){
+  var o = state.options || { projects: [], categories: [] };
+  if(o.projects.indexOf(state.project) < 0) state.project = o.projects[0] || "";
+  if(o.categories.indexOf(state.category) < 0) state.category = o.categories[0] || "";
+
+  var pe = $("projects"); pe.innerHTML = "";
+  if(!o.projects.length) pe.innerHTML = '<div class="empty">還沒載入工程清單，請確認密鑰與網路</div>';
+  o.projects.forEach(function(name){
+    var b = document.createElement("button");
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(name === state.project));
+    b.innerHTML = '<span class="dot"></span><span></span>';
+    b.lastChild.textContent = name;
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); };
+    pe.appendChild(b);
+  });
+
+  var ce = $("cats"); ce.innerHTML = "";
+  o.categories.forEach(function(name){
+    var m = name.match(/^([\d.]+)(.*)$/) || [name, "", name];
+    var b = document.createElement("button");
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(name === state.category));
+    b.innerHTML = "<i></i><span></span>";
+    b.firstChild.textContent = m[1];
+    b.lastChild.textContent = m[2];
+    b.onclick = function(){ state.category = name; LS.set("category", name); renderOptions(); refreshCount(); };
+    ce.appendChild(b);
+  });
+}
+
+function loadOptions(){
+  if(!state.key) return Promise.resolve();
+  return api({ action: "options" }).then(function(j){
+    state.options = { projects: j.projects, categories: j.categories };
+    LS.set("options", state.options);
+    renderOptions();
+    refreshCount();
+  }).catch(function(e){ if(e.server) openSheet(e.message); });
+}
+
+var countSeq = 0;
+function refreshCount(){
+  var d = $("date").value, seq = ++countSeq;
+  if(!state.project || !state.category || !d || !state.key){ $("today").textContent = ""; return; }
+  api({ action: "count", project: state.project, category: state.category, date: d }).then(function(j){
+    if(seq !== countSeq) return;
+    $("today").innerHTML = "";
+    $("today").append(state.category.replace(/^[\d.]+/, "") + "　" + roc(d) + " 已上傳 ");
+    var b = document.createElement("b"); b.textContent = j.count; $("today").append(b, " 張");
+  }).catch(function(){ if(seq === countSeq) $("today").textContent = "（離線中，照片會先存在手機，有網路再自動上傳）"; });
+}
+
+/* ---------- 畫面：佇列 ---------- */
+var STATUS = { wait: "等待", up: "上傳中", ok: "完成", err: "失敗" };
+function renderList(){
+  var le = $("list"); le.innerHTML = "";
+  var items = state.items.slice().sort(function(a, b){ return b.created - a.created; });
+  if(!items.length) le.innerHTML = '<div class="empty">還沒有照片。按下方「拍照」或「相簿」開始。</div>';
+  items.slice(0, 60).forEach(function(it){
+    if(!it.url && it.blob) it.url = URL.createObjectURL(it.blob);
+    var row = document.createElement("div"); row.className = "item";
+    var img = document.createElement("img"); img.alt = ""; if(it.url) img.src = it.url;
+    var m = document.createElement("div"); m.className = "m";
+    var n = document.createElement("div"); n.className = "n";
+    n.textContent = it.name || [roc(it.date), it.note, it.time].filter(Boolean).join("-") + "." + it.ext;
+    var d = document.createElement("div"); d.className = "d";
+    d.textContent = (it.status === "err" && it.err ? it.err + "　" : "") + it.category + "・" + it.project;
+    m.append(n, d);
+    var c = document.createElement("span"); c.className = "chip " + it.status; c.textContent = STATUS[it.status];
+    row.append(img, m, c);
+    le.appendChild(row);
+  });
+  var pending = state.items.filter(function(x){ return x.status === "wait" || x.status === "up"; }).length;
+  var failed = state.items.filter(function(x){ return x.status === "err"; }).length;
+  $("retryBtn").hidden = !failed || state.running;
+  $("sub").textContent = rocLong(isoToday()) + (pending ? "・待傳 " + pending + " 張" : "") + (failed ? "・失敗 " + failed + " 張" : "");
+}
+
+/* ---------- 加入照片 ---------- */
+function compress(file){
+  return new Promise(function(res){
+    if(!state.compress) return res({ blob: file, mimeType: file.type || "image/jpeg", ext: (file.name.split(".").pop() || "jpg").toLowerCase() });
+    var img = new Image(), u = URL.createObjectURL(file);
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, 2560 / Math.max(w, h));
+      w = Math.round(w * s); h = Math.round(h * s);
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(u);
+      c.toBlob(function(b){ res({ blob: b || file, mimeType: "image/jpeg", ext: "jpg" }); }, "image/jpeg", 0.85);
+    };
+    // 解不開（部分 HEIC）就傳原檔
+    img.onerror = function(){ URL.revokeObjectURL(u); res({ blob: file, mimeType: file.type || "image/jpeg", ext: (file.name.split(".").pop() || "jpg").toLowerCase() }); };
+    img.src = u;
+  });
+}
+
+function addFiles(files){
+  if(!state.key){ openSheet("請先貼上上傳密鑰"); return; }
+  if(!state.project || !state.category){ alert("請先選擇工程和照片類別"); return; }
+  // 每張照片鎖定按下當時的工程／類別／日期／備註
+  var meta = { project: state.project, category: state.category, date: $("date").value || isoToday(), note: $("note").value.trim() };
+  var chain = Promise.resolve();
+  Array.prototype.forEach.call(files, function(f){
+    chain = chain.then(function(){ return compress(f); }).then(function(r){
+      var it = Object.assign({ uid: uid(), time: hhmmss(), created: Date.now(), status: "wait" }, meta, r);
+      state.items.push(it);
+      renderList();
+      return db.put(it);
+    });
+  });
+  chain.then(run);
+}
+
+/* ---------- 上傳 ---------- */
+function toBase64(blob){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(String(r.result).split(",")[1]); };
+    r.onerror = function(){ rej(new Error("讀檔失敗")); };
+    r.readAsDataURL(blob);
+  });
+}
+
+function run(){
+  if(state.running) return;
+  var next = state.items.filter(function(x){ return x.status === "wait"; }).sort(function(a, b){ return a.created - b.created; })[0];
+  if(!next){ renderList(); refreshCount(); return; }
+  state.running = true;
+  next.status = "up"; next.err = ""; renderList();
+  toBase64(next.blob).then(function(b64){
+    return api({ action: "upload", uid: next.uid, project: next.project, category: next.category, date: next.date,
+                 note: next.note, time: next.time, base64: b64, mimeType: next.mimeType, ext: next.ext });
+  }).then(function(j){
+    next.status = "ok"; next.name = j.name; next.done = Date.now();
+    return db.put(next);
+  }).catch(function(e){
+    next.status = "err"; next.err = e.server ? e.message : "網路不通";
+    var badKey = e.server && /密鑰/.test(e.message);
+    if(badKey) openSheet(e.message);
+    return db.put(next).then(function(){ if(!e.server || badKey) throw e; });
+  }).then(function(){
+    state.running = false; run();
+  }, function(e){
+    // 網路問題：先停，等有網路或 30 秒後自動重試；密鑰錯就等使用者改好
+    state.running = false; renderList();
+    if(!e.server) scheduleRetry();
+  });
+}
+
+var retryTimer = null;
+function scheduleRetry(){
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(retryFailed, 30000);
+}
+function retryFailed(){
+  state.items.forEach(function(x){ if(x.status === "err" || x.status === "up"){ x.status = "wait"; db.put(x); } });
+  run();
+}
+
+/* ---------- 設定 ---------- */
+function openSheet(msg){
+  $("keyInput").value = state.key;
+  $("compress").checked = state.compress;
+  $("sheetMsg").textContent = msg || "";
+  $("sheetMsg").className = "msg" + (msg ? " err" : "");
+  $("sheet").hidden = false;
+}
+$("setBtn").onclick = function(){ openSheet(); };
+$("sheet").onclick = function(e){ if(e.target === $("sheet") && state.key) $("sheet").hidden = true; };
+$("saveBtn").onclick = function(){
+  var k = $("keyInput").value.trim();
+  state.compress = $("compress").checked; LS.set("compress", state.compress);
+  if(!k){ $("sheetMsg").textContent = "請貼上密鑰"; $("sheetMsg").className = "msg err"; return; }
+  var old = state.key; state.key = k;
+  $("sheetMsg").textContent = "確認中…"; $("sheetMsg").className = "msg";
+  api({ action: "options" }).then(function(j){
+    LS.set("key", k);
+    state.options = { projects: j.projects, categories: j.categories }; LS.set("options", state.options);
+    renderOptions(); refreshCount();
+    $("sheet").hidden = true;
+    retryFailed();
+  }).catch(function(e){
+    state.key = old;
+    $("sheetMsg").textContent = e.server ? e.message : "連不上伺服器，請確認網路";
+    $("sheetMsg").className = "msg err";
+  });
+};
+$("clearBtn").onclick = function(){
+  var done = state.items.filter(function(x){ return x.status === "ok"; });
+  done.forEach(function(x){ if(x.url) URL.revokeObjectURL(x.url); db.del(x.uid); });
+  state.items = state.items.filter(function(x){ return x.status !== "ok"; });
+  renderList();
+  $("sheetMsg").textContent = "已清除 " + done.length + " 筆"; $("sheetMsg").className = "msg ok";
+};
+
+/* ---------- 事件 ---------- */
+$("camBtn").onclick = function(){ $("camInput").click(); };
+$("pickBtn").onclick = function(){ $("pickInput").click(); };
+$("camInput").onchange = $("pickInput").onchange = function(e){ var f = e.target.files; if(f && f.length) addFiles(f); e.target.value = ""; };
+$("date").onchange = function(){ $("roc").textContent = $("date").value ? roc($("date").value) : ""; refreshCount(); };
+$("retryBtn").onclick = retryFailed;
+window.addEventListener("online", retryFailed);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState !== "visible") return;
+  // 隔天打開，日期自動跳到今天
+  if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
+  retryFailed();
+});
+$("date").addEventListener("input", function(){ $("date").dataset.auto = $("date").value === isoToday() ? "1" : "0"; });
+
+/* ---------- 啟動 ---------- */
+$("ver").textContent = APP_VERSION;
+$("date").value = isoToday(); $("date").dataset.auto = "1";
+$("roc").textContent = roc($("date").value);
+renderOptions();
+
+db.all().then(function(all){
+  // 完成超過 3 天的紀錄自動清掉，省手機空間
+  var cutoff = Date.now() - 3 * 86400000;
+  state.items = all.filter(function(x){
+    if(x.status === "ok" && (x.done || x.created) < cutoff){ db.del(x.uid); return false; }
+    if(x.status === "up") x.status = "wait";
+    return true;
+  });
+  renderList();
+  if(!state.key) openSheet();
+  else { loadOptions(); run(); }
+});
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+}
+})();
+</script>
+</body>
+</html>
