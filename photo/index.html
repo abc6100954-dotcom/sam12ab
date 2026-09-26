@@ -166,6 +166,15 @@ input[type=file]{display:none}
   border:1px solid var(--rule);border-radius:10px;background:var(--surface2)}
 .qty input:not(:placeholder-shown){border-color:var(--accent);background:var(--accent-soft)}
 .qty .u{width:30px;flex:none;font-size:12px;color:var(--ink3)}
+/* 施工項目：項目｜本日｜累計 */
+.qty.it{display:grid;grid-template-columns:minmax(0,1fr) 76px 68px;gap:8px;align-items:center}
+.qty.it input{width:100%}
+.qty .cum{text-align:right;font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;line-height:1.25}
+.qty .cum small{display:block;font-size:10px;color:var(--ink3)}
+.qty .auto{text-align:center;font-size:12px;color:var(--ink3)}
+.qhead{display:grid;grid-template-columns:minmax(0,1fr) 76px 68px;gap:8px;font-size:11px;color:var(--ink3);
+  letter-spacing:.08em;padding:0 0 4px;border-bottom:1px solid var(--rule)}
+.qhead span:nth-child(2){text-align:center} .qhead span:nth-child(3){text-align:right}
 details.grp{border-top:1px solid var(--rule)}
 details.grp:first-of-type{border-top:0}
 details.grp summary{list-style:none;cursor:pointer;padding:12px 0;font-weight:500;display:flex;align-items:center;gap:8px}
@@ -312,7 +321,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.09.26.3";
+var APP_VERSION = "2026.09.26.4";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -740,6 +749,46 @@ var J = {
     return row;
   },
 
+  // 施工項目一列：項目（項次、契約數量）｜本日（輸入）｜累計（這天之前 Excel 已有的＋本日）
+  fmt: function(v){
+    var r = Math.round(v * 1000) / 1000;
+    return r.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  },
+  cum: function(it, map){
+    var date = $("jDate").value, sum = 0, h = it.hist || {};
+    Object.keys(h).forEach(function(k){ if(k < date) sum += h[k]; });
+    return sum + (it.auto ? (h[date] || 0) : (map[it.key] || 0));
+  },
+  itemRow: function(it, map){
+    var row = J.el("div", "qty it");
+    var nm = J.el("div", "nm", it.name);
+    nm.appendChild(J.el("i", "", it.no + "　契約 " + it.qty + " " + it.unit));
+    var cum = J.el("div", "cum");
+    var paint = function(){
+      cum.textContent = J.fmt(J.cum(it, map));
+      cum.appendChild(J.el("small", "", it.unit));
+    };
+    var mid;
+    if(it.auto){
+      mid = J.el("div", "auto", "自動");
+      mid.title = "Excel 以公式自動計算";
+    } else {
+      mid = J.el("input");
+      mid.type = "text"; mid.inputMode = "decimal"; mid.placeholder = "—";
+      mid.value = map[it.key] != null ? map[it.key] : "";
+      mid.oninput = function(){
+        var v = mid.value.replace(/[^\d.]/g, "");
+        if(v !== mid.value) mid.value = v;
+        if(v === "") delete map[it.key]; else map[it.key] = Number(v);
+        J.touch(); J.updateCounts(); paint();
+      };
+    }
+    paint();
+    row.append(nm, mid, cum);
+    row.dataset.search = (it.name + " " + it.no).toLowerCase();
+    return row;
+  },
+
   updateCounts: function(){
     Array.prototype.forEach.call(document.querySelectorAll("details.grp"), function(g){
       var n = Array.prototype.filter.call(g.querySelectorAll(".qty input"), function(i){ return i.value !== ""; }).length;
@@ -788,9 +837,10 @@ var J = {
       var det = J.el("details", "grp");
       var sm = J.el("summary", "", g.name); sm.appendChild(J.el("span", "n", ""));
       det.appendChild(sm);
-      g.items.forEach(function(it){
-        det.appendChild(J.numRow(it.name, it.no + "　契約 " + it.qty + " " + it.unit, it.unit, d.qty, it.key));
-      });
+      var hd = J.el("div", "qhead");
+      hd.append(J.el("span", "", "項目"), J.el("span", "", "本日"), J.el("span", "", "累計"));
+      det.appendChild(hd);
+      g.items.forEach(function(it){ det.appendChild(J.itemRow(it, d.qty)); });
       if(g.items.some(function(it){ return d.qty[it.key] != null; })) det.open = true;
       q.appendChild(det); groups.push(det);
     });
