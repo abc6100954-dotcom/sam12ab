@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.01.2";
+var APP_VERSION = "2026.10.01.3";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -1031,7 +1031,10 @@ var K = {
     l0.appendChild(sel); a.appendChild(l0);
     var di = K.field(a, "檢查日期", "date", "", "date");
     di.onchange = di.oninput;
-    K.field(a, "編號（選填）", "number", "例：放樣-001");
+    // 編號由電腦產生紀錄表時自動編（同工程、同抽查表流水號），手機不用填
+    var nb = J.el("div", "kfield"); nb.appendChild(J.el("span", "", "編號"));
+    nb.appendChild(J.el("div", "", "自動編號：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-流水號（例：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-001）"));
+    a.appendChild(nb);
     K.field(a, "分項工程名稱", "subItem", "例：擋土牆");
     K.field(a, "檢查位置", "location", "例：Ⅰ工區 0K+120");
     K.field(a, "施工抽查項目（照片說明用）", "subject", t ? t.subject : "");
@@ -1099,7 +1102,7 @@ var K = {
       uid: id, kind: "job", project: state.project, date: d.date, created: Date.now(), status: "wait",
       blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
       data: {
-        template: d.template, number: d.number, subItem: d.subItem, location: d.location, stage: "", subject: d.subject,
+        template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject,
         results: [],   // 印出來手寫
         photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "" }; })
       }
