@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.01";
+var APP_VERSION = "2026.10.01.2";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -1035,32 +1035,7 @@ var K = {
     K.field(a, "分項工程名稱", "subItem", "例：擋土牆");
     K.field(a, "檢查位置", "location", "例：Ⅰ工區 0K+120");
     K.field(a, "施工抽查項目（照片說明用）", "subject", t ? t.subject : "");
-    var st = J.el("div", "jrow"); st.appendChild(J.el("div", "lab", "施工流程"));
-    st.appendChild(J.chips(["施工前", "施工中檢查", "施工完成檢查"], function(){ return d.stage; }, function(v){ d.stage = v; K.save(); }));
-    a.appendChild(st);
-
-    // 抽查項目
-    var b = J.section(body, "抽查項目", "CHECK");
-    var all = J.el("button", "linkbtn", "全部合格 ○（實際情形空白的填入抽查標準）");
-    all.type = "button";
-    all.onclick = function(){
-      t.items.forEach(function(it, i){ var r = d.results[i]; if(!r.result) r.result = "○"; if(!r.actual) r.actual = it.standard; });
-      K.save(); K.render();
-    };
-    b.appendChild(all);
-    t.items.forEach(function(it, i){
-      var r = d.results[i] || (d.results[i] = { actual: "", result: "" });
-      var row = J.el("div", "kitem" + (r.result === "╳" ? " bad" : ""));
-      if(it.group) row.appendChild(J.el("div", "g", it.group));
-      row.appendChild(J.el("div", "l", it.label));
-      row.appendChild(J.el("div", "std", "標準：" + it.standard));
-      var inp = J.el("input", "act"); inp.value = r.actual; inp.placeholder = "實際抽查情形";
-      inp.oninput = function(){ r.actual = inp.value; K.save(); };
-      row.appendChild(inp);
-      row.appendChild(J.chips(["○", "╳", "／"], function(){ return r.result; },
-        function(v){ r.result = v; row.className = "kitem" + (v === "╳" ? " bad" : ""); K.save(); }));
-      b.appendChild(row);
-    });
+    // 施工流程、抽查項目（實際情形、○╳／）不在手機填：印出來手寫（使用者 2026-10-01 要求）
 
     // 查證照片
     var p = J.section(body, "施工品質查證照片", "PHOTO");
@@ -1118,15 +1093,14 @@ var K = {
     var d = K.draft, t = K.tpl();
     if(!t){ alert("請先選抽查紀錄表"); return; }
     if(!d.location.trim()){ alert("請填檢查位置"); return; }
-    if(!d.results.some(function(r){ return r.result; })){ alert("請至少勾一個抽查結果"); return; }
     var now = new Date();
     var id = roc(d.date) + "-" + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + "-" + Math.random().toString(36).slice(2, 6);
     var job = {
       uid: id, kind: "job", project: state.project, date: d.date, created: Date.now(), status: "wait",
       blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
       data: {
-        template: d.template, number: d.number, subItem: d.subItem, location: d.location, stage: d.stage, subject: d.subject,
-        results: d.results,
+        template: d.template, number: d.number, subItem: d.subItem, location: d.location, stage: "", subject: d.subject,
+        results: [],   // 印出來手寫
         photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "" }; })
       }
     };
