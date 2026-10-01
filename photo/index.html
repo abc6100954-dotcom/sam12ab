@@ -188,6 +188,28 @@ textarea.note{width:100%;min-height:72px;border:1px solid var(--rule);border-rad
 select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:10px 12px;font-size:16px;color:var(--ink);margin:4px 0 8px}
 .pad{padding:4px 16px 8px}
 .warn{margin:10px 4px 0;font-size:13px;color:var(--over)}
+
+/* 抽查驗紀錄 */
+.kitem{padding:12px 0}
+.kitem + .kitem{border-top:1px solid var(--rule)}
+.kitem .g{font-size:11px;color:var(--ink3);letter-spacing:.06em}
+.kitem .l{font-weight:500;font-size:15px;line-height:1.4}
+.kitem .std{font-size:13px;color:var(--ink2);margin:2px 0 6px}
+.kitem input.act{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:16px}
+.kitem .chips{padding:8px 0 0}
+.kitem .chips button{min-width:56px;font-size:16px}
+.kitem.bad .l{color:var(--over)}
+.kfield{display:block;padding:8px 0}
+.kfield + .kfield{border-top:1px solid var(--rule)}
+.kfield span{display:block;font-size:13px;color:var(--ink2);margin-bottom:4px}
+.kfield input,.kfield select{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:16px;color:var(--ink)}
+.kphoto{display:flex;gap:10px;align-items:center;padding:8px 0}
+.kphoto + .kphoto{border-top:1px solid var(--rule)}
+.kphoto img{width:72px;height:72px;border-radius:10px;object-fit:cover;flex:none}
+.kphoto input{flex:1;min-width:0;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:16px}
+.kphoto button{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--rule);color:var(--over)}
+.row2.k{margin-top:10px}
+.linkbtn{color:var(--accent);font-size:14px;padding:6px 0}
 </style>
 </head>
 <body>
@@ -263,10 +285,9 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 </section>
 
 <section id="view-inspect" class="view" hidden>
-  <div class="card soon">
-    <b>抽查驗紀錄</b>
-    <p>準備中。請把抽查驗紀錄的範本（Word 或 Excel）給我，就能照範本做成手機填寫。</p>
-  </div>
+  <div id="kBody"></div>
+  <input type="file" id="kCam" accept="image/*" capture="environment">
+  <input type="file" id="kPick" accept="image/*" multiple>
 </section>
 </div>
 
@@ -275,6 +296,15 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button class="btn primary" id="jSaveBtn">
       <svg viewBox="0 0 24 24"><path d="M5 12l4.5 4.5L19 7"/></svg>
       儲存日誌
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="kDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="kSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
+      送出抽查紀錄
     </button>
   </div>
 </div>
@@ -321,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.09.26.4";
+var APP_VERSION = "2026.10.01";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -354,15 +384,20 @@ function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toS
 
 /* ---------- IndexedDB 佇列 ---------- */
 var dbp = new Promise(function(res, rej){
-  var r = indexedDB.open("site-photo", 1);
-  r.onupgradeneeded = function(){ r.result.createObjectStore("queue", { keyPath: "uid" }); };
+  var r = indexedDB.open("site-photo", 2);
+  r.onupgradeneeded = function(){
+    var d = r.result;
+    if(!d.objectStoreNames.contains("queue")) d.createObjectStore("queue", { keyPath: "uid" });
+    if(!d.objectStoreNames.contains("inspect")) d.createObjectStore("inspect", { keyPath: "uid" });   // 抽查驗草稿與待送紀錄
+  };
   r.onsuccess = function(){ res(r.result); };
   r.onerror = function(){ rej(r.error); };
 });
-function tx(mode, fn){
+function tx(mode, fn, store){
+  store = store || "queue";
   return dbp.then(function(db){
     return new Promise(function(res, rej){
-      var t = db.transaction("queue", mode), s = t.objectStore("queue"), out = fn(s);
+      var t = db.transaction(store, mode), s = t.objectStore(store), out = fn(s);
       t.oncomplete = function(){ res(out && out.result !== undefined ? out.result : undefined); };
       t.onerror = function(){ rej(t.error); };
     });
@@ -372,6 +407,11 @@ var db = {
   all: function(){ return tx("readonly", function(s){ return s.getAll(); }); },
   put: function(it){ var c = Object.assign({}, it); delete c.url; return tx("readwrite", function(s){ s.put(c); }); },
   del: function(id){ return tx("readwrite", function(s){ s.delete(id); }); }
+};
+var kdb = {
+  all: function(){ return tx("readonly", function(s){ return s.getAll(); }, "inspect"); },
+  put: function(it){ return tx("readwrite", function(s){ s.put(it); }, "inspect"); },
+  del: function(id){ return tx("readwrite", function(s){ s.delete(id); }, "inspect"); }
 };
 
 /* ---------- 後端 ---------- */
@@ -398,7 +438,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); };
     pe.appendChild(b);
   });
 }
@@ -411,6 +451,7 @@ function loadOptions(){
     renderOptions();
     refreshCount();
     if(state.view === "journal") J.open();
+    if(state.view === "inspect") K.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -595,7 +636,9 @@ function showView(v){
   Array.prototype.forEach.call(document.querySelectorAll(".view"), function(s){ s.hidden = s.id !== "view-" + v; });
   $("photoDock").hidden = v !== "photo";
   $("jDock").hidden = v !== "journal";
+  $("kDock").hidden = v !== "inspect";
   if(v === "journal") J.open();
+  if(v === "inspect") K.open();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -902,6 +945,253 @@ $("jDate").onchange = function(){ J.open(); };
 $("jSaveBtn").onclick = function(){ J.save(); };
 window.addEventListener("online", function(){ J.flushAll(); });
 
+/* ---------- 抽查驗紀錄 ----------
+ * 範本清單由電腦從 Word 範本匯出。填寫中的表單（含照片）存在手機的 IndexedDB 當草稿，
+ * 關掉 APP 也不會不見。送出後變成一筆「待送」：先一張張傳照片，最後存表單，
+ * 電腦看到表單才照範本產生 Word。沒網路就排隊，有網路自動補送。
+ */
+var K = {
+  tpls: LS.get("ktpls", []), draft: null, jobs: [], running: false, timer: null, saveTimer: null,
+
+  tpl: function(){ var id = K.draft && K.draft.template; return K.tpls.filter(function(t){ return t.id === id; })[0] || null; },
+  draftId: function(){ return "draft|" + state.project; },
+
+  blank: function(t, keep){
+    keep = keep || {};
+    return {
+      uid: K.draftId(), kind: "draft", project: state.project,
+      template: t ? t.id : "", date: isoToday(), number: "",
+      subItem: keep.subItem || "", location: keep.location || "", stage: keep.stage || "",
+      subject: t ? t.subject : "",
+      results: t ? t.items.map(function(){ return { actual: "", result: "" }; }) : [],
+      photos: []
+    };
+  },
+
+  open: function(){
+    kdb.all().then(function(all){
+      // 送完超過 14 天的紀錄自動清掉
+      var cutoff = Date.now() - 14 * 86400000;
+      all = all.filter(function(x){
+        if(x.kind === "job" && x.status === "ok" && (x.done || x.created) < cutoff){ kdb.del(x.uid); return false; }
+        return true;
+      });
+      K.jobs = all.filter(function(x){ return x.kind === "job" && x.project === state.project; })
+                  .sort(function(a, b){ return b.created - a.created; });
+      K.draft = all.filter(function(x){ return x.uid === K.draftId(); })[0] || null;
+      if(!K.draft || !K.tpl()) K.draft = K.blank(K.tpls[0], K.draft || {});
+      K.render();
+    });
+    if(!state.key) return;
+    api({ action: "inspectTemplates" }).then(function(j){
+      var changed = JSON.stringify(j.templates) !== JSON.stringify(K.tpls);
+      K.tpls = j.templates || []; LS.set("ktpls", K.tpls);
+      if(changed && K.draft){
+        if(!K.tpl()) K.draft = K.blank(K.tpls[0], K.draft);
+        K.render();
+      }
+    }).catch(function(){});
+  },
+
+  save: function(){
+    clearTimeout(K.saveTimer);
+    K.saveTimer = setTimeout(function(){ if(K.draft) kdb.put(K.draft); }, 300);
+  },
+
+  field: function(box, label, key, ph, type){
+    var l = J.el("label", "kfield"); l.appendChild(J.el("span", "", label));
+    var i = J.el("input"); i.type = type || "text"; i.value = K.draft[key] || ""; if(ph) i.placeholder = ph;
+    i.oninput = function(){ K.draft[key] = i.value; K.save(); };
+    l.appendChild(i); box.appendChild(l); return i;
+  },
+
+  render: function(){
+    var body = $("kBody"); body.innerHTML = "";
+    var d = K.draft, t = K.tpl();
+    if(!K.tpls.length){
+      var c = J.el("div", "card soon");
+      c.append(J.el("b", "", "還沒有抽查範本"),
+               J.el("p", "", state.key ? "電腦排程會把「抽查範本」資料夾裡的 Word 範本清單送過來，請稍候或確認電腦有開著。" : "請先到設定貼上密鑰。"));
+      body.appendChild(c); $("kDock").hidden = true; K.renderJobs(body); return;
+    }
+    $("kDock").hidden = state.view !== "inspect";
+
+    // 範本與基本資料
+    var a = J.section(body, "抽查表", "FORM");
+    var l0 = J.el("label", "kfield"); l0.appendChild(J.el("span", "", "抽查紀錄表"));
+    var sel = J.el("select");
+    K.tpls.forEach(function(x){ sel.appendChild(new Option(x.title, x.id)); });
+    sel.value = d.template;
+    sel.onchange = function(){
+      var nt = K.tpls.filter(function(x){ return x.id === sel.value; })[0];
+      var keepPhotos = d.photos;
+      K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.number = d.number;
+      K.save(); K.render();
+    };
+    l0.appendChild(sel); a.appendChild(l0);
+    var di = K.field(a, "檢查日期", "date", "", "date");
+    di.onchange = di.oninput;
+    K.field(a, "編號（選填）", "number", "例：放樣-001");
+    K.field(a, "分項工程名稱", "subItem", "例：擋土牆");
+    K.field(a, "檢查位置", "location", "例：Ⅰ工區 0K+120");
+    K.field(a, "施工抽查項目（照片說明用）", "subject", t ? t.subject : "");
+    var st = J.el("div", "jrow"); st.appendChild(J.el("div", "lab", "施工流程"));
+    st.appendChild(J.chips(["施工前", "施工中檢查", "施工完成檢查"], function(){ return d.stage; }, function(v){ d.stage = v; K.save(); }));
+    a.appendChild(st);
+
+    // 抽查項目
+    var b = J.section(body, "抽查項目", "CHECK");
+    var all = J.el("button", "linkbtn", "全部合格 ○（實際情形空白的填入抽查標準）");
+    all.type = "button";
+    all.onclick = function(){
+      t.items.forEach(function(it, i){ var r = d.results[i]; if(!r.result) r.result = "○"; if(!r.actual) r.actual = it.standard; });
+      K.save(); K.render();
+    };
+    b.appendChild(all);
+    t.items.forEach(function(it, i){
+      var r = d.results[i] || (d.results[i] = { actual: "", result: "" });
+      var row = J.el("div", "kitem" + (r.result === "╳" ? " bad" : ""));
+      if(it.group) row.appendChild(J.el("div", "g", it.group));
+      row.appendChild(J.el("div", "l", it.label));
+      row.appendChild(J.el("div", "std", "標準：" + it.standard));
+      var inp = J.el("input", "act"); inp.value = r.actual; inp.placeholder = "實際抽查情形";
+      inp.oninput = function(){ r.actual = inp.value; K.save(); };
+      row.appendChild(inp);
+      row.appendChild(J.chips(["○", "╳", "／"], function(){ return r.result; },
+        function(v){ r.result = v; row.className = "kitem" + (v === "╳" ? " bad" : ""); K.save(); }));
+      b.appendChild(row);
+    });
+
+    // 查證照片
+    var p = J.section(body, "施工品質查證照片", "PHOTO");
+    d.photos.forEach(function(ph, i){
+      var row = J.el("div", "kphoto");
+      var img = J.el("img"); img.alt = ""; img.src = ph.url || (ph.url = URL.createObjectURL(ph.blob));
+      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = "抽查內容，例：放樣點位";
+      cap.oninput = function(){ ph.caption = cap.value; K.save(); };
+      var del = J.el("button", "", "✕"); del.type = "button"; del.setAttribute("aria-label", "移除照片");
+      del.onclick = function(){ d.photos.splice(i, 1); K.save(); K.render(); };
+      row.append(img, cap, del); p.appendChild(row);
+    });
+    if(!d.photos.length) p.appendChild(J.el("div", "today", "範本有 " + (t.photoRows || 0) + " 格照片，超過會自動加頁。"));
+    var pb = J.el("div", "row2 k");
+    var cam = J.el("button", "btn", "📷 拍照"), pick = J.el("button", "btn", "🖼 相簿");
+    cam.type = pick.type = "button";
+    cam.onclick = function(){ $("kCam").click(); };
+    pick.onclick = function(){ $("kPick").click(); };
+    pb.append(cam, pick); p.appendChild(pb);
+
+    K.renderJobs(body);
+  },
+
+  addPhotos: function(files){
+    var chain = Promise.resolve();
+    Array.prototype.forEach.call(files, function(f){
+      chain = chain.then(function(){ return compress(f); }).then(function(r){
+        K.draft.photos.push({ blob: r.blob, caption: "" });
+      });
+    });
+    chain.then(function(){ kdb.put(K.draft); K.render(); });
+  },
+
+  renderJobs: function(body){
+    if(!K.jobs.length) return;
+    var c = J.section(body, "送出紀錄", "SENT");
+    c.className = "card";
+    var list = J.el("div", "list"); c.appendChild(list);
+    K.jobs.slice(0, 20).forEach(function(j){
+      var row = J.el("div", "item");
+      var m = J.el("div", "m");
+      var tt = K.tpls.filter(function(x){ return x.id === j.data.template; })[0];
+      m.append(J.el("div", "n", roc(j.date) + "　" + (tt ? tt.title : j.data.template)),
+               J.el("div", "d", (j.err ? j.err + "　" : "") + (j.data.location || "") + "・照片 " + j.data.photos.length + " 張"));
+      var chip = J.el("span", "chip " + j.status, STATUS[j.status]);
+      row.append(m, chip); list.appendChild(row);
+    });
+    if(K.jobs.some(function(j){ return j.status === "err"; })){
+      var rb = J.el("button", "retry", "重試失敗的紀錄"); rb.type = "button";
+      rb.onclick = function(){ K.retry(); }; c.appendChild(rb);
+    }
+  },
+
+  submit: function(){
+    var d = K.draft, t = K.tpl();
+    if(!t){ alert("請先選抽查紀錄表"); return; }
+    if(!d.location.trim()){ alert("請填檢查位置"); return; }
+    if(!d.results.some(function(r){ return r.result; })){ alert("請至少勾一個抽查結果"); return; }
+    var now = new Date();
+    var id = roc(d.date) + "-" + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + "-" + Math.random().toString(36).slice(2, 6);
+    var job = {
+      uid: id, kind: "job", project: state.project, date: d.date, created: Date.now(), status: "wait",
+      blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
+      data: {
+        template: d.template, number: d.number, subItem: d.subItem, location: d.location, stage: d.stage, subject: d.subject,
+        results: d.results,
+        photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "" }; })
+      }
+    };
+    kdb.put(job).then(function(){
+      K.jobs.unshift(job);
+      // 新的一張：保留範本、分項、位置、流程，清掉結果與照片
+      K.draft = K.blank(t, d);
+      kdb.put(K.draft);
+      K.render();
+      window.scrollTo(0, 0);
+      K.run();
+    });
+  },
+
+  run: function(){
+    if(K.running || !state.key) return;
+    kdb.all().then(function(all){
+      var job = all.filter(function(x){ return x.kind === "job" && x.status === "wait"; })
+                   .sort(function(a, b){ return a.created - b.created; })[0];
+      if(!job) return;
+      K.running = true;
+      K.setStatus(job, "up", "");
+      var i = 0;
+      var next = function(){
+        while(i < job.blobs.length && job.uploaded[i]) i++;
+        if(i < job.blobs.length){
+          var idx = i;
+          return toBase64(job.blobs[idx]).then(function(b64){
+            return api({ action: "inspectPhoto", project: job.project, id: job.uid, idx: idx + 1, base64: b64 });
+          }).then(function(){ job.uploaded[idx] = true; return kdb.put(job); }).then(next);
+        }
+        return api({ action: "inspectSave", project: job.project, id: job.uid, date: job.date, data: job.data });
+      };
+      next().then(function(){
+        // 送完就把照片從手機的待送資料裡拿掉，省空間（照片已在雲端）
+        job.blobs = []; job.status = "ok"; job.err = ""; job.done = Date.now();
+        return kdb.put(job);
+      }).then(function(){ K.running = false; K.sync(job); K.run(); }, function(e){
+        job.status = "err"; job.err = e.server ? e.message : "網路不通";
+        kdb.put(job); K.running = false; K.sync(job);
+        if(!e.server){ clearTimeout(K.timer); K.timer = setTimeout(K.retry, 30000); }
+      });
+    });
+  },
+
+  setStatus: function(job, s, err){ job.status = s; job.err = err; K.sync(job); },
+  sync: function(job){
+    var i = -1;
+    K.jobs.forEach(function(x, k){ if(x.uid === job.uid) i = k; });
+    if(i >= 0) K.jobs[i] = job;
+    if(state.view === "inspect" && job.project === state.project) K.render();
+  },
+  retry: function(){
+    kdb.all().then(function(all){
+      var ps = all.filter(function(x){ return x.kind === "job" && (x.status === "err" || x.status === "up"); })
+                  .map(function(x){ x.status = "wait"; return kdb.put(x); });
+      return Promise.all(ps);
+    }).then(function(){ if(state.view === "inspect") K.open(); K.run(); });
+  }
+};
+
+$("kSendBtn").onclick = function(){ K.submit(); };
+$("kCam").onchange = $("kPick").onchange = function(e){ var f = e.target.files; if(f && f.length) K.addPhotos(f); e.target.value = ""; };
+window.addEventListener("online", function(){ K.retry(); });
+
 /* ---------- 啟動 ---------- */
 $("ver").textContent = APP_VERSION;
 $("date").value = isoToday(); $("date").dataset.auto = "1";
@@ -919,7 +1209,7 @@ db.all().then(function(all){
   renderList();
   showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); J.flushAll(); }
+  else { loadOptions(); run(); J.flushAll(); K.run(); }
 });
 
 if("serviceWorker" in navigator){
