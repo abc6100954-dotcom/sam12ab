@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.02.2";
+var APP_VERSION = "2026.10.02.3";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -1078,11 +1078,27 @@ var K = {
     K.renderJobs(body);
   },
 
+  // 拍攝日期：壓縮後照片裡的拍攝資訊會不見，所以先從原檔讀出來（找 EXIF 的 2026:10:02 這種字串），讀不到就用檔案時間
+  takenDate: function(f){
+    var fallback = function(){
+      var t = new Date(f.lastModified || Date.now());
+      return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate());
+    };
+    if(!f.slice || !f.arrayBuffer) return Promise.resolve(fallback());
+    return f.slice(0, 262144).arrayBuffer().then(function(buf){
+      var b = new Uint8Array(buf), s = "";
+      for(var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+      var m = s.match(/(\d{4}):(\d{2}):(\d{2}) \d{2}:\d{2}:\d{2}/);
+      return m && m[1] > "1990" ? m[1] + "-" + m[2] + "-" + m[3] : fallback();
+    }).catch(fallback);
+  },
+
   addPhotos: function(files){
     var chain = Promise.resolve();
     Array.prototype.forEach.call(files, function(f){
-      chain = chain.then(function(){ return compress(f); }).then(function(r){
-        K.draft.photos.push({ blob: r.blob, caption: "" });
+      var taken;
+      chain = chain.then(function(){ return K.takenDate(f); }).then(function(t){ taken = t; return compress(f); }).then(function(r){
+        K.draft.photos.push({ blob: r.blob, caption: "", taken: taken });
       });
     });
     chain.then(function(){ kdb.put(K.draft); K.render(); });
@@ -1120,7 +1136,7 @@ var K = {
       data: {
         template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject,
         results: [],   // 印出來手寫
-        photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "" }; })
+        photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "", taken: ph.taken || "" }; })
       }
     };
     kdb.put(job).then(function(){
