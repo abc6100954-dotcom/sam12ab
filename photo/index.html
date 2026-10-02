@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.02";
+var APP_VERSION = "2026.10.02.2";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -982,6 +982,7 @@ var K = {
                   .sort(function(a, b){ return b.created - a.created; });
       K.draft = all.filter(function(x){ return x.uid === K.draftId(); })[0] || null;
       if(!K.draft || !K.tpl()) K.draft = K.blank(K.tpls[0], K.draft || {});
+      K.refreshDefaults();
       K.render();
     });
     if(!state.key) return;
@@ -1000,10 +1001,23 @@ var K = {
     K.saveTimer = setTimeout(function(){ if(K.draft) kdb.put(K.draft); }, 300);
   },
 
+  // 草稿帶過夜時：檢查日期換成今天（今天手動改過就不動）；施工抽查項目沒手動改過就跟著範本
+  refreshDefaults: function(){
+    var d = K.draft, t = K.tpl();
+    if(!d) return;
+    if(d.dateSetOn !== isoToday()) d.date = isoToday();
+    if(t && !d.subjectEdited) d.subject = t.subject;
+  },
+
   field: function(box, label, key, ph, type){
     var l = J.el("label", "kfield"); l.appendChild(J.el("span", "", label));
     var i = J.el("input"); i.type = type || "text"; i.value = K.draft[key] || ""; if(ph) i.placeholder = ph;
-    i.oninput = function(){ K.draft[key] = i.value; K.save(); };
+    i.oninput = function(){
+      K.draft[key] = i.value;
+      if(key === "date") K.draft.dateSetOn = isoToday();
+      if(key === "subject") K.draft.subjectEdited = true;
+      K.save();
+    };
     l.appendChild(i); box.appendChild(l); return i;
   },
 
@@ -1027,7 +1041,7 @@ var K = {
     sel.onchange = function(){
       var nt = K.tpls.filter(function(x){ return x.id === sel.value; })[0];
       var keepPhotos = d.photos;
-      K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.number = d.number;
+      K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.dateSetOn = d.dateSetOn; K.draft.number = d.number;
       K.save(); K.render();
     };
     l0.appendChild(sel); a.appendChild(l0);
