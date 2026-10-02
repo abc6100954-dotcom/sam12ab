@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.02.3";
+var APP_VERSION = "2026.10.02.4";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -1041,7 +1041,7 @@ var K = {
     sel.onchange = function(){
       var nt = K.tpls.filter(function(x){ return x.id === sel.value; })[0];
       var keepPhotos = d.photos;
-      K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.dateSetOn = d.dateSetOn; K.draft.number = d.number;
+      K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.dateSetOn = d.dateSetOn; K.draft.number = d.number; K.draft.content = d.content;
       K.save(); K.render();
     };
     l0.appendChild(sel); a.appendChild(l0);
@@ -1054,6 +1054,7 @@ var K = {
     K.field(a, "分項工程名稱", "subItem", "例：擋土牆");
     K.field(a, "檢查位置", "location", "例：Ⅰ工區 0K+120");
     K.field(a, "施工抽查項目（照片說明用）", "subject", t ? t.subject : "");
+    K.field(a, "抽查內容（照片說明用，每張都套用）", "content", "例：鋼筋間距 15cm、搭接長度符合");
     // 施工流程、抽查項目（實際情形、○╳／）不在手機填：印出來手寫（使用者 2026-10-01 要求）
 
     // 查證照片
@@ -1061,7 +1062,7 @@ var K = {
     d.photos.forEach(function(ph, i){
       var row = J.el("div", "kphoto");
       var img = J.el("img"); img.alt = ""; img.src = ph.url || (ph.url = URL.createObjectURL(ph.blob));
-      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = "抽查內容，例：放樣點位";
+      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = "這張另外寫（空白＝用上面的抽查內容）";
       cap.oninput = function(){ ph.caption = cap.value; K.save(); };
       var del = J.el("button", "", "✕"); del.type = "button"; del.setAttribute("aria-label", "移除照片");
       del.onclick = function(){ d.photos.splice(i, 1); K.save(); K.render(); };
@@ -1134,7 +1135,7 @@ var K = {
       uid: id, kind: "job", project: state.project, date: d.date, created: Date.now(), status: "wait",
       blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
       data: {
-        template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject,
+        template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject, content: d.content || "",
         results: [],   // 印出來手寫
         photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "", taken: ph.taken || "" }; })
       }
