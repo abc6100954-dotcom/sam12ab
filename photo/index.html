@@ -351,7 +351,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.01.3";
+var APP_VERSION = "2026.10.02";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -620,6 +620,7 @@ $("retryBtn").onclick = retryFailed;
 window.addEventListener("online", retryFailed);
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState !== "visible") return;
+  if(state.view === "inspect") K.open();   // 跨過午夜回到 APP 時清掉昨天的送出紀錄
   // 隔天打開，日期自動跳到今天
   if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
   retryFailed();
@@ -970,8 +971,9 @@ var K = {
 
   open: function(){
     kdb.all().then(function(all){
-      // 送完超過 14 天的紀錄自動清掉
-      var cutoff = Date.now() - 14 * 86400000;
+      // 送出紀錄每天 0 點清掉：已完成且不是今天送完的就刪（等待中、失敗的保留到送成功）
+      var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+      var cutoff = midnight.getTime();
       all = all.filter(function(x){
         if(x.kind === "job" && x.status === "ok" && (x.done || x.created) < cutoff){ kdb.del(x.uid); return false; }
         return true;
