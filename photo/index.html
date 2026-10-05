@@ -141,9 +141,9 @@ h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--s
 input[type=file]{display:none}
 
 /* 功能選單 */
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}
 .tabs button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-height:64px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink2);padding:6px 2px}
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--ink2);padding:6px 1px;letter-spacing:-.02em}
 .tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
 .soon{margin-top:16px;padding:18px 16px}
@@ -240,6 +240,9 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button role="tab" data-view="inspect">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M9 11l1.5 1.5L13.5 9"/></svg>
       抽查驗紀錄</button>
+      <button role="tab" data-view="safety">
+      <svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18v2.5H3z"/><path d="M10 7.2V5h4v2.2"/></svg>
+      職安抽查</button>
   </nav>
 
 <section id="view-photo" class="view">
@@ -289,6 +292,12 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
   <input type="file" id="kCam" accept="image/*" capture="environment">
   <input type="file" id="kPick" accept="image/*" multiple>
 </section>
+
+<section id="view-safety" class="view" hidden>
+  <div id="sBody"></div>
+  <input type="file" id="sCam" accept="image/*" capture="environment">
+  <input type="file" id="sPick" accept="image/*" multiple>
+</section>
 </div>
 
 <div class="dock" id="jDock" hidden>
@@ -305,6 +314,15 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button class="btn primary" id="kSendBtn">
       <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
       送出抽查紀錄
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="sDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="sSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
+      送出職安抽查
     </button>
   </div>
 </div>
@@ -351,7 +369,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.02.4";
+var APP_VERSION = "2026.10.05";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -438,7 +456,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); };
     pe.appendChild(b);
   });
 }
@@ -452,6 +470,7 @@ function loadOptions(){
     refreshCount();
     if(state.view === "journal") J.open();
     if(state.view === "inspect") K.open();
+    if(state.view === "safety") S.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -621,6 +640,7 @@ window.addEventListener("online", retryFailed);
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState !== "visible") return;
   if(state.view === "inspect") K.open();   // 跨過午夜回到 APP 時清掉昨天的送出紀錄
+  if(state.view === "safety") S.open();
   // 隔天打開，日期自動跳到今天
   if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
   retryFailed();
@@ -629,7 +649,7 @@ $("date").addEventListener("input", function(){ $("date").dataset.auto = $("date
 
 /* ---------- 功能選單 ---------- */
 function showView(v){
-  if(["photo", "journal", "check", "inspect"].indexOf(v) < 0) v = "photo";
+  if(["photo", "journal", "check", "inspect", "safety"].indexOf(v) < 0) v = "photo";
   state.view = v; LS.set("view", v);
   Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
     b.setAttribute("aria-selected", String(b.dataset.view === v));
@@ -638,8 +658,10 @@ function showView(v){
   $("photoDock").hidden = v !== "photo";
   $("jDock").hidden = v !== "journal";
   $("kDock").hidden = v !== "inspect";
+  $("sDock").hidden = v !== "safety";
   if(v === "journal") J.open();
   if(v === "inspect") K.open();
+  if(v === "safety") S.open();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -951,11 +973,12 @@ window.addEventListener("online", function(){ J.flushAll(); });
  * 關掉 APP 也不會不見。送出後變成一筆「待送」：先一張張傳照片，最後存表單，
  * 電腦看到表單才照範本產生 Word。沒網路就排隊，有網路自動補送。
  */
+function makeInspector(o){
 var K = {
-  tpls: LS.get("ktpls", []), draft: null, jobs: [], running: false, timer: null, saveTimer: null,
+  tpls: LS.get(o.tplKey, []), draft: null, jobs: [], running: false, timer: null, saveTimer: null,
 
   tpl: function(){ var id = K.draft && K.draft.template; return K.tpls.filter(function(t){ return t.id === id; })[0] || null; },
-  draftId: function(){ return "draft|" + state.project; },
+  draftId: function(){ return o.draftPrefix + state.project; },
 
   blank: function(t, keep){
     keep = keep || {};
@@ -975,10 +998,10 @@ var K = {
       var midnight = new Date(); midnight.setHours(0, 0, 0, 0);
       var cutoff = midnight.getTime();
       all = all.filter(function(x){
-        if(x.kind === "job" && x.status === "ok" && (x.done || x.created) < cutoff){ kdb.del(x.uid); return false; }
+        if(x.kind === "job" && (x.type || "抽查") === o.kind && x.status === "ok" && (x.done || x.created) < cutoff){ kdb.del(x.uid); return false; }
         return true;
       });
-      K.jobs = all.filter(function(x){ return x.kind === "job" && x.project === state.project; })
+      K.jobs = all.filter(function(x){ return x.kind === "job" && (x.type || "抽查") === o.kind && x.project === state.project; })
                   .sort(function(a, b){ return b.created - a.created; });
       K.draft = all.filter(function(x){ return x.uid === K.draftId(); })[0] || null;
       if(!K.draft || !K.tpl()) K.draft = K.blank(K.tpls[0], K.draft || {});
@@ -986,9 +1009,9 @@ var K = {
       K.render();
     });
     if(!state.key) return;
-    api({ action: "inspectTemplates" }).then(function(j){
+    api({ action: "inspectTemplates", kind: o.kind }).then(function(j){
       var changed = JSON.stringify(j.templates) !== JSON.stringify(K.tpls);
-      K.tpls = j.templates || []; LS.set("ktpls", K.tpls);
+      K.tpls = j.templates || []; LS.set(o.tplKey, K.tpls);
       if(changed && K.draft){
         if(!K.tpl()) K.draft = K.blank(K.tpls[0], K.draft);
         K.render();
@@ -1022,15 +1045,15 @@ var K = {
   },
 
   render: function(){
-    var body = $("kBody"); body.innerHTML = "";
+    var body = $(o.body); body.innerHTML = "";
     var d = K.draft, t = K.tpl();
     if(!K.tpls.length){
       var c = J.el("div", "card soon");
       c.append(J.el("b", "", "還沒有抽查範本"),
                J.el("p", "", state.key ? "電腦排程會把「抽查範本」資料夾裡的 Word 範本清單送過來，請稍候或確認電腦有開著。" : "請先到設定貼上密鑰。"));
-      body.appendChild(c); $("kDock").hidden = true; K.renderJobs(body); return;
+      body.appendChild(c); $(o.dock).hidden = true; K.renderJobs(body); return;
     }
-    $("kDock").hidden = state.view !== "inspect";
+    $(o.dock).hidden = state.view !== o.view;
 
     // 範本與基本資料
     var a = J.section(body, "抽查表", "FORM");
@@ -1072,8 +1095,8 @@ var K = {
     var pb = J.el("div", "row2 k");
     var cam = J.el("button", "btn", "📷 拍照"), pick = J.el("button", "btn", "🖼 相簿");
     cam.type = pick.type = "button";
-    cam.onclick = function(){ $("kCam").click(); };
-    pick.onclick = function(){ $("kPick").click(); };
+    cam.onclick = function(){ $(o.cam).click(); };
+    pick.onclick = function(){ $(o.pick).click(); };
     pb.append(cam, pick); p.appendChild(pb);
 
     K.renderJobs(body);
@@ -1095,6 +1118,7 @@ var K = {
   },
 
   addPhotos: function(files){
+    K.busy = (K.busy || 0) + 1;            // 照片處理中，先別送出
     var chain = Promise.resolve();
     Array.prototype.forEach.call(files, function(f){
       var taken;
@@ -1102,7 +1126,7 @@ var K = {
         K.draft.photos.push({ blob: r.blob, caption: "", taken: taken });
       });
     });
-    chain.then(function(){ kdb.put(K.draft); K.render(); });
+    chain.then(function(){ kdb.put(K.draft); K.render(); }, function(){}).then(function(){ K.busy--; });
   },
 
   renderJobs: function(body){
@@ -1126,13 +1150,14 @@ var K = {
   },
 
   submit: function(){
+    if(K.busy){ alert("照片處理中，請稍候再送出"); return; }
     var d = K.draft, t = K.tpl();
     if(!t){ alert("請先選抽查紀錄表"); return; }
     if(!d.location.trim()){ alert("請填檢查位置"); return; }
     var now = new Date();
     var id = roc(d.date) + "-" + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + "-" + Math.random().toString(36).slice(2, 6);
     var job = {
-      uid: id, kind: "job", project: state.project, date: d.date, created: Date.now(), status: "wait",
+      uid: id, kind: "job", type: o.kind, project: state.project, date: d.date, created: Date.now(), status: "wait",
       blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
       data: {
         template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject, content: d.content || "",
@@ -1154,7 +1179,7 @@ var K = {
   run: function(){
     if(K.running || !state.key) return;
     kdb.all().then(function(all){
-      var job = all.filter(function(x){ return x.kind === "job" && x.status === "wait"; })
+      var job = all.filter(function(x){ return x.kind === "job" && (x.type || "抽查") === o.kind && x.status === "wait"; })
                    .sort(function(a, b){ return a.created - b.created; })[0];
       if(!job) return;
       K.running = true;
@@ -1165,10 +1190,10 @@ var K = {
         if(i < job.blobs.length){
           var idx = i;
           return toBase64(job.blobs[idx]).then(function(b64){
-            return api({ action: "inspectPhoto", project: job.project, id: job.uid, idx: idx + 1, base64: b64 });
+            return api({ action: "inspectPhoto", kind: o.kind, project: job.project, id: job.uid, idx: idx + 1, base64: b64 });
           }).then(function(){ job.uploaded[idx] = true; return kdb.put(job); }).then(next);
         }
-        return api({ action: "inspectSave", project: job.project, id: job.uid, date: job.date, data: job.data });
+        return api({ action: "inspectSave", kind: o.kind, project: job.project, id: job.uid, date: job.date, data: job.data });
       };
       next().then(function(){
         // 送完就把照片從手機的待送資料裡拿掉，省空間（照片已在雲端）
@@ -1187,20 +1212,26 @@ var K = {
     var i = -1;
     K.jobs.forEach(function(x, k){ if(x.uid === job.uid) i = k; });
     if(i >= 0) K.jobs[i] = job;
-    if(state.view === "inspect" && job.project === state.project) K.render();
+    if(state.view === o.view && job.project === state.project) K.render();
   },
   retry: function(){
     kdb.all().then(function(all){
-      var ps = all.filter(function(x){ return x.kind === "job" && (x.status === "err" || x.status === "up"); })
+      var ps = all.filter(function(x){ return x.kind === "job" && (x.type || "抽查") === o.kind && (x.status === "err" || x.status === "up"); })
                   .map(function(x){ x.status = "wait"; return kdb.put(x); });
       return Promise.all(ps);
-    }).then(function(){ if(state.view === "inspect") K.open(); K.run(); });
+    }).then(function(){ if(state.view === o.view) K.open(); K.run(); });
   }
 };
 
-$("kSendBtn").onclick = function(){ K.submit(); };
-$("kCam").onchange = $("kPick").onchange = function(e){ var f = e.target.files; if(f && f.length) K.addPhotos(f); e.target.value = ""; };
+$(o.send).onclick = function(){ K.submit(); };
+$(o.cam).onchange = $(o.pick).onchange = function(e){ var f = e.target.files; if(f && f.length) K.addPhotos(f); e.target.value = ""; };
 window.addEventListener("online", function(){ K.retry(); });
+return K;
+}
+
+// 施工抽查（抽查驗紀錄）與職安抽查：同一套程式，範本、雲端資料夾、產生的工程資料夾不同
+var K = makeInspector({ view: "inspect", kind: "抽查", body: "kBody", cam: "kCam", pick: "kPick", dock: "kDock", send: "kSendBtn", tplKey: "ktpls", draftPrefix: "draft|" });
+var S = makeInspector({ view: "safety", kind: "職安", body: "sBody", cam: "sCam", pick: "sPick", dock: "sDock", send: "sSendBtn", tplKey: "stpls", draftPrefix: "draft|職安|" });
 
 /* ---------- 啟動 ---------- */
 $("ver").textContent = APP_VERSION;
@@ -1219,7 +1250,7 @@ db.all().then(function(all){
   renderList();
   showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); J.flushAll(); K.run(); }
+  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); }
 });
 
 if("serviceWorker" in navigator){
