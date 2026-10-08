@@ -141,10 +141,10 @@ h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--s
 input[type=file]{display:none}
 
 /* 功能選單 */
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px}
-.tabs button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-height:64px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--ink2);padding:6px 1px;letter-spacing:-.02em}
-.tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.tabs button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-height:60px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink2);padding:6px 2px}
+.tabs svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
 .soon{margin-top:16px;padding:18px 16px}
 .soon b{font-family:var(--serif);font-size:16px}
@@ -240,9 +240,12 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button role="tab" data-view="inspect">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M9 11l1.5 1.5L13.5 9"/></svg>
       抽查驗紀錄</button>
-      <button role="tab" data-view="safety">
+    <button role="tab" data-view="safety">
       <svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18v2.5H3z"/><path d="M10 7.2V5h4v2.2"/></svg>
       職安抽查</button>
+    <button role="tab" data-view="material">
+      <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
+      材料抽驗記錄</button>
   </nav>
 
 <section id="view-photo" class="view">
@@ -298,6 +301,12 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
   <input type="file" id="sCam" accept="image/*" capture="environment">
   <input type="file" id="sPick" accept="image/*" multiple>
 </section>
+
+<section id="view-material" class="view" hidden>
+  <div id="mBody"></div>
+  <input type="file" id="mCam" accept="image/*" capture="environment">
+  <input type="file" id="mPick" accept="image/*" multiple>
+</section>
 </div>
 
 <div class="dock" id="jDock" hidden>
@@ -323,6 +332,15 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button class="btn primary" id="sSendBtn">
       <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
       送出職安抽查
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="mDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="mSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
+      送出材料抽驗
     </button>
   </div>
 </div>
@@ -369,7 +387,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.05";
+var APP_VERSION = "2026.10.08";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -456,7 +474,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); if(state.view === "material") M.open(); };
     pe.appendChild(b);
   });
 }
@@ -471,6 +489,7 @@ function loadOptions(){
     if(state.view === "journal") J.open();
     if(state.view === "inspect") K.open();
     if(state.view === "safety") S.open();
+    if(state.view === "material") M.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -641,6 +660,7 @@ document.addEventListener("visibilitychange", function(){
   if(document.visibilityState !== "visible") return;
   if(state.view === "inspect") K.open();   // 跨過午夜回到 APP 時清掉昨天的送出紀錄
   if(state.view === "safety") S.open();
+  if(state.view === "material") M.open();
   // 隔天打開，日期自動跳到今天
   if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
   retryFailed();
@@ -649,7 +669,7 @@ $("date").addEventListener("input", function(){ $("date").dataset.auto = $("date
 
 /* ---------- 功能選單 ---------- */
 function showView(v){
-  if(["photo", "journal", "check", "inspect", "safety"].indexOf(v) < 0) v = "photo";
+  if(["photo", "journal", "check", "inspect", "safety", "material"].indexOf(v) < 0) v = "photo";
   state.view = v; LS.set("view", v);
   Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
     b.setAttribute("aria-selected", String(b.dataset.view === v));
@@ -659,9 +679,11 @@ function showView(v){
   $("jDock").hidden = v !== "journal";
   $("kDock").hidden = v !== "inspect";
   $("sDock").hidden = v !== "safety";
+  $("mDock").hidden = v !== "material";
   if(v === "journal") J.open();
   if(v === "inspect") K.open();
   if(v === "safety") S.open();
+  if(v === "material") M.open();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -974,6 +996,15 @@ window.addEventListener("online", function(){ J.flushAll(); });
  * 電腦看到表單才照範本產生 Word。沒網路就排隊，有網路自動補送。
  */
 function makeInspector(o){
+// 表單欄位：[標題, 欄位, 提示]（提示 null＝用範本的預設抽查項目）
+var F = o.fields || [
+  ["分項工程名稱", "subItem", "例：擋土牆"],
+  ["檢查位置", "location", "例：Ⅰ工區 0K+120"],
+  ["施工抽查項目（照片說明用）", "subject", null],
+  ["抽查內容（照片說明用，每張都套用）", "content", "例：鋼筋間距 15cm、搭接長度符合"]
+];
+var NEED = o.need || ["location", "請填檢查位置"];      // 必填欄位，也顯示在送出紀錄
+var KEEP = o.keep || ["subItem", "location", "stage"];   // 送出後下一張沿用
 var K = {
   tpls: LS.get(o.tplKey, []), draft: null, jobs: [], running: false, timer: null, saveTimer: null,
 
@@ -982,14 +1013,16 @@ var K = {
 
   blank: function(t, keep){
     keep = keep || {};
-    return {
+    var d = {
       uid: K.draftId(), kind: "draft", project: state.project,
-      template: t ? t.id : "", date: isoToday(), number: "",
-      subItem: keep.subItem || "", location: keep.location || "", stage: keep.stage || "",
+      template: t ? t.id : "", date: isoToday(), number: "", stage: "",
       subject: t ? t.subject : "",
       results: t ? t.items.map(function(){ return { actual: "", result: "" }; }) : [],
       photos: []
     };
+    F.forEach(function(f){ if(f[1] !== "subject") d[f[1]] = ""; });
+    KEEP.forEach(function(k){ d[k] = keep[k] || ""; });
+    return d;
   },
 
   open: function(){
@@ -1057,7 +1090,7 @@ var K = {
 
     // 範本與基本資料
     var a = J.section(body, "抽查表", "FORM");
-    var l0 = J.el("label", "kfield"); l0.appendChild(J.el("span", "", "抽查紀錄表"));
+    var l0 = J.el("label", "kfield"); l0.appendChild(J.el("span", "", o.formLabel || "抽查紀錄表"));
     var sel = J.el("select");
     K.tpls.forEach(function(x){ sel.appendChild(new Option(x.title, x.id)); });
     sel.value = d.template;
@@ -1068,24 +1101,21 @@ var K = {
       K.save(); K.render();
     };
     l0.appendChild(sel); a.appendChild(l0);
-    var di = K.field(a, "檢查日期", "date", "", "date");
+    var di = K.field(a, o.dateLabel || "檢查日期", "date", "", "date");
     di.onchange = di.oninput;
     // 編號由電腦產生紀錄表時自動編（同工程、同抽查表流水號），手機不用填
     var nb = J.el("div", "kfield"); nb.appendChild(J.el("span", "", "編號"));
     nb.appendChild(J.el("div", "", "自動編號：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-流水號（例：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-001）"));
     a.appendChild(nb);
-    K.field(a, "分項工程名稱", "subItem", "例：擋土牆");
-    K.field(a, "檢查位置", "location", "例：Ⅰ工區 0K+120");
-    K.field(a, "施工抽查項目（照片說明用）", "subject", t ? t.subject : "");
-    K.field(a, "抽查內容（照片說明用，每張都套用）", "content", "例：鋼筋間距 15cm、搭接長度符合");
+    F.forEach(function(f){ K.field(a, f[0], f[1], f[2] === null ? (t ? t.subject : "") : f[2]); });
     // 施工流程、抽查項目（實際情形、○╳／）不在手機填：印出來手寫（使用者 2026-10-01 要求）
 
     // 查證照片
-    var p = J.section(body, "施工品質查證照片", "PHOTO");
+    var p = J.section(body, o.photoTitle || "施工品質查證照片", "PHOTO");
     d.photos.forEach(function(ph, i){
       var row = J.el("div", "kphoto");
       var img = J.el("img"); img.alt = ""; img.src = ph.url || (ph.url = URL.createObjectURL(ph.blob));
-      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = "這張另外寫（空白＝用上面的抽查內容）";
+      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = o.capHint || "這張另外寫（空白＝用上面的抽查內容）";
       cap.oninput = function(){ ph.caption = cap.value; K.save(); };
       var del = J.el("button", "", "✕"); del.type = "button"; del.setAttribute("aria-label", "移除照片");
       del.onclick = function(){ d.photos.splice(i, 1); K.save(); K.render(); };
@@ -1139,7 +1169,7 @@ var K = {
       var m = J.el("div", "m");
       var tt = K.tpls.filter(function(x){ return x.id === j.data.template; })[0];
       m.append(J.el("div", "n", roc(j.date) + "　" + (tt ? tt.title : j.data.template)),
-               J.el("div", "d", (j.err ? j.err + "　" : "") + (j.data.location || "") + "・照片 " + j.data.photos.length + " 張"));
+               J.el("div", "d", (j.err ? j.err + "　" : "") + (j.data[NEED[0]] || "") + "・照片 " + j.data.photos.length + " 張"));
       var chip = J.el("span", "chip " + j.status, STATUS[j.status]);
       row.append(m, chip); list.appendChild(row);
     });
@@ -1152,19 +1182,20 @@ var K = {
   submit: function(){
     if(K.busy){ alert("照片處理中，請稍候再送出"); return; }
     var d = K.draft, t = K.tpl();
-    if(!t){ alert("請先選抽查紀錄表"); return; }
-    if(!d.location.trim()){ alert("請填檢查位置"); return; }
+    if(!t){ alert("請先選" + (o.formLabel || "抽查紀錄表")); return; }
+    if(!String(d[NEED[0]] || "").trim()){ alert(NEED[1]); return; }
     var now = new Date();
     var id = roc(d.date) + "-" + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + "-" + Math.random().toString(36).slice(2, 6);
     var job = {
       uid: id, kind: "job", type: o.kind, project: state.project, date: d.date, created: Date.now(), status: "wait",
       blobs: d.photos.map(function(ph){ return ph.blob; }), uploaded: d.photos.map(function(){ return false; }),
       data: {
-        template: d.template, number: "", subItem: d.subItem, location: d.location, stage: "", subject: d.subject, content: d.content || "",
+        template: d.template, number: "", stage: "", subject: d.subject, content: d.content || "",
         results: [],   // 印出來手寫
         photos: d.photos.map(function(ph, i){ return { file: "photo" + (i + 1) + ".jpg", caption: ph.caption || "", taken: ph.taken || "" }; })
       }
     };
+    F.forEach(function(f){ if(f[1] !== "subject" && f[1] !== "content") job.data[f[1]] = d[f[1]] || ""; });
     kdb.put(job).then(function(){
       K.jobs.unshift(job);
       // 新的一張：保留範本、分項、位置、流程，清掉結果與照片
@@ -1232,6 +1263,18 @@ return K;
 // 施工抽查（抽查驗紀錄）與職安抽查：同一套程式，範本、雲端資料夾、產生的工程資料夾不同
 var K = makeInspector({ view: "inspect", kind: "抽查", body: "kBody", cam: "kCam", pick: "kPick", dock: "kDock", send: "kSendBtn", tplKey: "ktpls", draftPrefix: "draft|" });
 var S = makeInspector({ view: "safety", kind: "職安", body: "sBody", cam: "sCam", pick: "sPick", dock: "sDock", send: "sSendBtn", tplKey: "stpls", draftPrefix: "draft|職安|" });
+// 材料抽驗：材料設備品質抽驗紀錄表，產生到 4.查驗\4.1材料抽查驗
+var M = makeInspector({ view: "material", kind: "材料", body: "mBody", cam: "mCam", pick: "mPick", dock: "mDock", send: "mSendBtn", tplKey: "mtpls", draftPrefix: "draft|材料|",
+  formLabel: "抽驗紀錄表", dateLabel: "進場日期", photoTitle: "材料抽驗查證照片", capHint: "這張另外寫（空白＝用上面的抽驗內容）",
+  need: ["material", "請填材料設備名稱"], keep: ["supplier", "place"],
+  fields: [
+    ["材料設備名稱", "material", "例：#4 竹節鋼筋"],
+    ["供料廠商", "supplier", ""],
+    ["進場數量", "qty", "例：3.5 噸"],
+    ["材料堆置地點", "place", "例：工區 A 材料堆置場"],
+    ["抽驗項目（照片說明用）", "subject", null],
+    ["抽驗內容（照片說明用，每張都套用）", "content", "例：外觀、尺寸量測"]
+  ] });
 
 /* ---------- 啟動 ---------- */
 $("ver").textContent = APP_VERSION;
@@ -1250,7 +1293,7 @@ db.all().then(function(all){
   renderList();
   showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); }
+  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); M.run(); }
 });
 
 if("serviceWorker" in navigator){
