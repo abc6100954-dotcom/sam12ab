@@ -387,7 +387,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.08";
+var APP_VERSION = "2026.10.22";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -980,7 +980,7 @@ var J = {
       r.appendChild(ta); n.appendChild(r);
     });
 
-    body.appendChild(J.el("div", "today", "按「儲存日誌」後，電腦開著時約 10 分鐘內寫進「" + cfg.workbook + "」；Excel 正開著這個檔時，關掉後才會寫入。"));
+    body.appendChild(J.el("div", "today", "按「儲存日誌」後，電腦開著時約 20 分鐘內寫進「" + cfg.workbook + "」；Excel 正開著這個檔時，關掉後才會寫入。"));
     J.updateCounts();
     J.statusFromState();
   }
