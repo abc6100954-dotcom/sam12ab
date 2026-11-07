@@ -141,7 +141,7 @@ h2.sec em{font-style:normal;font-size:11px;color:var(--ink3);font-family:var(--s
 input[type=file]{display:none}
 
 /* 功能選單 */
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:12px}
 .tabs button{background:var(--surface);border:1px solid var(--rule);border-radius:12px;min-height:60px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink2);padding:6px 2px}
 .tabs svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -202,7 +202,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 .kfield{display:block;padding:8px 0}
 .kfield + .kfield{border-top:1px solid var(--rule)}
 .kfield span{display:block;font-size:13px;color:var(--ink2);margin-bottom:4px}
-.kfield input,.kfield select{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:16px;color:var(--ink)}
+.kfield input,.kfield select,.kfield textarea{width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:16px;color:var(--ink)}
 .kphoto{display:flex;gap:10px;align-items:center;padding:8px 0}
 .kphoto + .kphoto{border-top:1px solid var(--rule)}
 .kphoto img{width:72px;height:72px;border-radius:10px;object-fit:cover;flex:none}
@@ -246,6 +246,9 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button role="tab" data-view="material">
       <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
       材料抽驗記錄</button>
+    <button role="tab" data-view="weekly">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4M8 14h3M8 17h6"/></svg>
+      施工週報</button>
   </nav>
 
 <section id="view-photo" class="view">
@@ -301,6 +304,12 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
   <input type="file" id="sPick" accept="image/*" multiple>
 </section>
 
+<section id="view-weekly" class="view" hidden>
+  <div id="wBody"></div>
+  <input type="file" id="wCam" accept="image/*" capture="environment">
+  <input type="file" id="wPick" accept="image/*" multiple>
+</section>
+
 <section id="view-material" class="view" hidden>
   <div id="mBody"></div>
   <input type="file" id="mCam" accept="image/*" capture="environment">
@@ -312,7 +321,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
   <div class="in one">
     <button class="btn primary" id="jSaveBtn">
       <svg viewBox="0 0 24 24"><path d="M5 12l4.5 4.5L19 7"/></svg>
-      儲存日誌
+      <span id="jSaveTxt">儲存日誌</span>
     </button>
   </div>
 </div>
@@ -340,6 +349,15 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button class="btn primary" id="cSendBtn">
       <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
       送出自主檢查表
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="wDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="wSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
+      送出施工週報
     </button>
   </div>
 </div>
@@ -395,7 +413,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.11.07";
+var APP_VERSION = "2026.11.07.3";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -482,7 +500,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); if(state.view === "material") M.open(); if(state.view === "check") C.open(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); if(state.view === "material") M.open(); if(state.view === "check") C.open(); if(state.view === "weekly") W.open(); };
     pe.appendChild(b);
   });
 }
@@ -499,6 +517,7 @@ function loadOptions(){
     if(state.view === "safety") S.open();
     if(state.view === "material") M.open();
     if(state.view === "check") C.open();
+    if(state.view === "weekly") W.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -671,6 +690,7 @@ document.addEventListener("visibilitychange", function(){
   if(state.view === "safety") S.open();
   if(state.view === "material") M.open();
   if(state.view === "check") C.open();
+  if(state.view === "weekly") W.open();
   // 隔天打開，日期自動跳到今天
   if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
   retryFailed();
@@ -679,7 +699,7 @@ $("date").addEventListener("input", function(){ $("date").dataset.auto = $("date
 
 /* ---------- 功能選單 ---------- */
 function showView(v){
-  if(["photo", "journal", "check", "inspect", "safety", "material"].indexOf(v) < 0) v = "photo";
+  if(["photo", "journal", "check", "inspect", "safety", "material", "weekly"].indexOf(v) < 0) v = "photo";
   state.view = v; LS.set("view", v);
   Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
     b.setAttribute("aria-selected", String(b.dataset.view === v));
@@ -691,11 +711,13 @@ function showView(v){
   $("sDock").hidden = v !== "safety";
   $("mDock").hidden = v !== "material";
   $("cDock").hidden = v !== "check";
+  $("wDock").hidden = v !== "weekly";
   if(v === "journal") J.open();
   if(v === "inspect") K.open();
   if(v === "safety") S.open();
   if(v === "material") M.open();
   if(v === "check") C.open();
+  if(v === "weekly") W.open();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -769,6 +791,13 @@ var J = {
 
   status: function(t){ $("jStatus").textContent = t; },
 
+  // 狀態列在頁面最上面，按鈕在最下面看不到：結果直接顯示在按鈕上，幾秒後變回來
+  btn: function(t, back){
+    $("jSaveTxt").textContent = t;
+    clearTimeout(J.btnTimer);
+    if(back) J.btnTimer = setTimeout(function(){ $("jSaveTxt").textContent = "儲存日誌"; }, 4000);
+  },
+
   statusFromState: function(){
     if(J.dirty) J.status("有尚未送出的修改");
     else if(J.savedAt){ var t = new Date(J.savedAt); J.status("已儲存　" + pad(t.getMonth() + 1) + "/" + pad(t.getDate()) + " " + pad(t.getHours()) + ":" + pad(t.getMinutes())); }
@@ -790,11 +819,14 @@ var J = {
     var key = J.draftKey(), date = $("jDate").value, project = state.project, d = LS.get(key, null);
     if(!d || !d.pending) return;
     J.status("儲存中…");
+    J.btn("儲存中…");
     $("jSaveBtn").disabled = true;
     api({ action: "journalSave", project: project, date: date, data: d.data }).then(function(j){
       LS.set(key, null);
+      J.btn("✓ 已儲存 " + roc(date), true);
       if(key === J.draftKey()){ J.savedAt = j.savedAt; J.dirty = false; J.statusFromState(); }
     }).catch(function(e){
+      J.btn(e.server ? "儲存失敗，請再按一次" : "已存在手機，有網路自動送出", true);
       if(key === J.draftKey()) J.status(e.server ? "儲存失敗：" + e.message : "離線中：已存在手機，有網路會自動送出");
     }).then(function(){ $("jSaveBtn").disabled = false; });
   },
@@ -1028,13 +1060,14 @@ var K = {
     keep = keep || {};
     var d = {
       uid: K.draftId(), kind: "draft", project: state.project,
-      template: t ? t.id : "", date: isoToday(), number: "", stage: "",
+      template: t ? t.id : "", date: o.defaultDate ? o.defaultDate() : isoToday(), number: "", stage: "",
       subject: t ? t.subject : "",
       results: t ? t.items.map(function(){ return { actual: "", result: "" }; }) : [],
       photos: []
     };
     F.forEach(function(f){ if(f[1] !== "subject") d[f[1]] = ""; });
     KEEP.forEach(function(k){ d[k] = keep[k] || ""; });
+    if(o.defaults) o.defaults(d);
     return d;
   },
 
@@ -1074,17 +1107,20 @@ var K = {
   refreshDefaults: function(){
     var d = K.draft, t = K.tpl();
     if(!d) return;
-    if(d.dateSetOn !== isoToday()) d.date = isoToday();
+    if(d.dateSetOn !== isoToday()) d.date = o.defaultDate ? o.defaultDate() : isoToday();
     if(t && !d.subjectEdited) d.subject = t.subject;
+    if(o.defaults) o.defaults(d);
   },
 
   field: function(box, label, key, ph, type){
     var l = J.el("label", "kfield"); l.appendChild(J.el("span", "", label));
-    var i = J.el("input"); i.type = type || "text"; i.value = K.draft[key] || ""; if(ph) i.placeholder = ph;
+    var i = J.el(type === "textarea" ? "textarea" : "input"); if(type !== "textarea") i.type = type || "text"; else i.rows = 4;
+    i.value = K.draft[key] || ""; if(ph) i.placeholder = ph;
     i.oninput = function(){
       K.draft[key] = i.value;
       if(key === "date") K.draft.dateSetOn = isoToday();
       if(key === "subject") K.draft.subjectEdited = true;
+      if(key === "start") K.draft.startEdited = true;
       K.save();
     };
     l.appendChild(i); box.appendChild(l); return i;
@@ -1115,12 +1151,12 @@ var K = {
     };
     l0.appendChild(sel); a.appendChild(l0);
     var di = K.field(a, o.dateLabel || "檢查日期", "date", "", "date");
-    di.onchange = di.oninput;
+    di.onchange = o.defaults ? function(){ di.oninput(); o.defaults(K.draft); K.save(); K.render(); } : di.oninput;
     // 編號由電腦產生紀錄表時自動編（同工程、同抽查表流水號），手機不用填
-    var nb = J.el("div", "kfield"); nb.appendChild(J.el("span", "", "編號"));
+    var nb = J.el("div", "kfield"); nb.hidden = !!o.noNumber; nb.appendChild(J.el("span", "", "編號"));
     nb.appendChild(J.el("div", "", "自動編號：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-流水號（例：" + ((t && t.prefix) || "鋼筋") + "-" + roc(d.date || isoToday()) + "-001）"));
     a.appendChild(nb);
-    F.forEach(function(f){ K.field(a, f[0], f[1], f[2] === null ? (t ? t.subject : "") : f[2]); });
+    F.forEach(function(f){ K.field(a, f[0], f[1], f[2] === null ? (t ? t.subject : "") : f[2], f[3]); });
     // 施工流程、抽查項目（實際情形、○╳／）不在手機填：印出來手寫（使用者 2026-10-01 要求）
 
     // 查證照片
@@ -1128,13 +1164,14 @@ var K = {
     d.photos.forEach(function(ph, i){
       var row = J.el("div", "kphoto");
       var img = J.el("img"); img.alt = ""; img.src = ph.url || (ph.url = URL.createObjectURL(ph.blob));
-      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = o.capHint || "這張另外寫（空白＝用上面的抽查內容）";
+      var cap = J.el("input"); cap.value = ph.caption || ""; cap.placeholder = o.capHint || "這張另外寫（空白＝用上面的抽查內容）"; cap.hidden = !!o.maxPhotos;
       cap.oninput = function(){ ph.caption = cap.value; K.save(); };
       var del = J.el("button", "", "✕"); del.type = "button"; del.setAttribute("aria-label", "移除照片");
       del.onclick = function(){ d.photos.splice(i, 1); K.save(); K.render(); };
       row.append(img, cap, del); p.appendChild(row);
     });
-    if(!d.photos.length) p.appendChild(J.el("div", "today", "範本有 " + (t.photoRows || 0) + " 格照片，超過會自動加頁。"));
+    if(o.maxPhotos) p.appendChild(J.el("div", "today", "已選 " + d.photos.length + " 張，最多 " + o.maxPhotos + " 張。"));
+    else if(!d.photos.length) p.appendChild(J.el("div", "today", "範本有 " + (t.photoRows || 0) + " 格照片，超過會自動加頁。"));
     var pb = J.el("div", "row2 k");
     var cam = J.el("button", "btn", "📷 拍照"), pick = J.el("button", "btn", "🖼 相簿");
     cam.type = pick.type = "button";
@@ -1162,14 +1199,17 @@ var K = {
 
   addPhotos: function(files){
     K.busy = (K.busy || 0) + 1;            // 照片處理中，先別送出
-    var chain = Promise.resolve();
+    var chain = Promise.resolve(), over = false;
     Array.prototype.forEach.call(files, function(f){
       var taken;
-      chain = chain.then(function(){ return K.takenDate(f); }).then(function(t){ taken = t; return compress(f); }).then(function(r){
-        K.draft.photos.push({ blob: r.blob, caption: "", taken: taken });
+      chain = chain.then(function(){
+        if(o.maxPhotos && K.draft.photos.length >= o.maxPhotos){ over = true; return; }
+        return K.takenDate(f).then(function(t){ taken = t; return compress(f); }).then(function(r){
+          K.draft.photos.push({ blob: r.blob, caption: "", taken: taken });
+        });
       });
     });
-    chain.then(function(){ kdb.put(K.draft); K.render(); }, function(){}).then(function(){ K.busy--; });
+    chain.then(function(){ kdb.put(K.draft); K.render(); if(over) alert("最多 " + o.maxPhotos + " 張照片，多的沒有加入"); }, function(){}).then(function(){ K.busy--; });
   },
 
   renderJobs: function(body){
@@ -1182,7 +1222,7 @@ var K = {
       var m = J.el("div", "m");
       var tt = K.tpls.filter(function(x){ return x.id === j.data.template; })[0];
       m.append(J.el("div", "n", roc(j.date) + "　" + (tt ? tt.title : j.data.template)),
-               J.el("div", "d", (j.err ? j.err + "　" : "") + (j.data[NEED[0]] || "") + "・照片 " + j.data.photos.length + " 張"));
+               J.el("div", "d", (j.err ? j.err + "　" : "") + String(j.data[NEED[0]] || "").slice(0, 24) + "・照片 " + j.data.photos.length + " 張"));
       var chip = J.el("span", "chip " + j.status, STATUS[j.status]);
       row.append(m, chip); list.appendChild(row);
     });
@@ -1286,6 +1326,22 @@ var C = makeInspector({ view: "check", kind: "自主", body: "cBody", cam: "cCam
     ["檢查項目（照片說明用）", "subject", null],
     ["檢查內容（照片說明用，每張都套用）", "content", "例：鋼筋間距 20cm、保護層符合"]
   ] });
+// 施工週報：週六到週五一份，截止日預設這週五；預計／實際進度由電腦從施工日誌讀
+function isoOf(t){ return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate()); }
+var W = makeInspector({ view: "weekly", kind: "週報", body: "wBody", cam: "wCam", pick: "wPick", dock: "wDock", send: "wSendBtn", tplKey: "wtpls", draftPrefix: "draft|週報|",
+  formLabel: "週報表", sectionLabel: "施工週報", dateLabel: "本週截止日（週五）", photoTitle: "本週施工照片", noNumber: true, maxPhotos: 6,
+  emptyTitle: "這個工程還沒有施工週報", emptyText: "目前只有「多納里等3案改善工程」有週報範本。其他工程請把範本給我，就能加上去。",
+  need: ["outline", "請填本週施做項目大綱"], keep: [],
+  defaultDate: function(){ var t = new Date(); t.setDate(t.getDate() + (5 - t.getDay() + 7) % 7); return isoOf(t); },
+  defaults: function(d){
+    if(d.startEdited) return;
+    var p = d.date.split("-"), t = new Date(+p[0], +p[1] - 1, +p[2] - 6);
+    d.start = isoOf(t);
+  },
+  fields: [
+    ["本週起始日（週六）", "start", "", "date"],
+    ["本週施做項目大綱（一行一項，會自動編號）", "outline", "例：11/09 工區二既有L溝打除", "textarea"]
+  ] });
 // 材料抽驗：材料設備品質抽驗紀錄表，產生到 4.查驗\4.1材料抽查驗
 var M = makeInspector({ view: "material", kind: "材料", body: "mBody", cam: "mCam", pick: "mPick", dock: "mDock", send: "mSendBtn", tplKey: "mtpls", draftPrefix: "draft|材料|",
   formLabel: "抽驗紀錄表", dateLabel: "進場日期", photoTitle: "材料抽驗查證照片", capHint: "這張另外寫（空白＝用上面的抽驗內容）",
@@ -1316,7 +1372,7 @@ db.all().then(function(all){
   renderList();
   showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); M.run(); C.run(); }
+  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); M.run(); C.run(); W.run(); }
 });
 
 if("serviceWorker" in navigator){
