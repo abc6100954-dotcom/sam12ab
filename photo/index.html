@@ -284,10 +284,9 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 </section>
 
 <section id="view-check" class="view" hidden>
-  <div class="card soon">
-    <b>自主檢查表</b>
-    <p>準備中。請把自主檢查表的範本（Word 或 Excel）給我，就能照範本做成手機填寫。</p>
-  </div>
+  <div id="cBody"></div>
+  <input type="file" id="cCam" accept="image/*" capture="environment">
+  <input type="file" id="cPick" accept="image/*" multiple>
 </section>
 
 <section id="view-inspect" class="view" hidden>
@@ -332,6 +331,15 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
     <button class="btn primary" id="sSendBtn">
       <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
       送出職安抽查
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="cDock" hidden>
+  <div class="in one">
+    <button class="btn primary" id="cSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg>
+      送出自主檢查表
     </button>
   </div>
 </div>
@@ -387,7 +395,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.10.22";
+var APP_VERSION = "2026.11.07";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -474,7 +482,7 @@ function renderOptions(){
     b.setAttribute("aria-checked", String(name === state.project));
     b.innerHTML = '<span class="dot"></span><span></span>';
     b.lastChild.textContent = name;
-    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); if(state.view === "material") M.open(); };
+    b.onclick = function(){ state.project = name; LS.set("project", name); renderOptions(); refreshCount(); if(state.view === "journal") J.open(); if(state.view === "inspect") K.open(); if(state.view === "safety") S.open(); if(state.view === "material") M.open(); if(state.view === "check") C.open(); };
     pe.appendChild(b);
   });
 }
@@ -490,6 +498,7 @@ function loadOptions(){
     if(state.view === "inspect") K.open();
     if(state.view === "safety") S.open();
     if(state.view === "material") M.open();
+    if(state.view === "check") C.open();
   }).catch(function(e){ if(e.server) openSheet(e.message); });
 }
 
@@ -661,6 +670,7 @@ document.addEventListener("visibilitychange", function(){
   if(state.view === "inspect") K.open();   // 跨過午夜回到 APP 時清掉昨天的送出紀錄
   if(state.view === "safety") S.open();
   if(state.view === "material") M.open();
+  if(state.view === "check") C.open();
   // 隔天打開，日期自動跳到今天
   if($("date").dataset.auto === "1" && $("date").value !== isoToday()){ $("date").value = isoToday(); $("date").onchange(); }
   retryFailed();
@@ -680,10 +690,12 @@ function showView(v){
   $("kDock").hidden = v !== "inspect";
   $("sDock").hidden = v !== "safety";
   $("mDock").hidden = v !== "material";
+  $("cDock").hidden = v !== "check";
   if(v === "journal") J.open();
   if(v === "inspect") K.open();
   if(v === "safety") S.open();
   if(v === "material") M.open();
+  if(v === "check") C.open();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -980,7 +992,7 @@ var J = {
       r.appendChild(ta); n.appendChild(r);
     });
 
-    body.appendChild(J.el("div", "today", "按「儲存日誌」後，電腦開著時約 20 分鐘內寫進「" + cfg.workbook + "」；Excel 正開著這個檔時，關掉後才會寫入。"));
+    body.appendChild(J.el("div", "today", "按「儲存日誌」後，電腦開著時約 60 分鐘內寫進「" + cfg.workbook + "」；Excel 正開著這個檔時，關掉後才會寫入。"));
     J.updateCounts();
     J.statusFromState();
   }
@@ -1008,7 +1020,8 @@ var KEEP = o.keep || ["subItem", "location", "stage"];   // 送出後下一張�
 var K = {
   tpls: LS.get(o.tplKey, []), draft: null, jobs: [], running: false, timer: null, saveTimer: null,
 
-  tpl: function(){ var id = K.draft && K.draft.template; return K.tpls.filter(function(t){ return t.id === id; })[0] || null; },
+  list: function(){ return K.tpls.filter(function(t){ return !t.project || t.project === state.project; }); },
+  tpl: function(){ var id = K.draft && K.draft.template; return K.list().filter(function(t){ return t.id === id; })[0] || null; },
   draftId: function(){ return o.draftPrefix + state.project; },
 
   blank: function(t, keep){
@@ -1037,7 +1050,7 @@ var K = {
       K.jobs = all.filter(function(x){ return x.kind === "job" && (x.type || "抽查") === o.kind && x.project === state.project; })
                   .sort(function(a, b){ return b.created - a.created; });
       K.draft = all.filter(function(x){ return x.uid === K.draftId(); })[0] || null;
-      if(!K.draft || !K.tpl()) K.draft = K.blank(K.tpls[0], K.draft || {});
+      if(!K.draft || !K.tpl()) K.draft = K.blank(K.list()[0], K.draft || {});
       K.refreshDefaults();
       K.render();
     });
@@ -1046,7 +1059,7 @@ var K = {
       var changed = JSON.stringify(j.templates) !== JSON.stringify(K.tpls);
       K.tpls = j.templates || []; LS.set(o.tplKey, K.tpls);
       if(changed && K.draft){
-        if(!K.tpl()) K.draft = K.blank(K.tpls[0], K.draft);
+        if(!K.tpl()) K.draft = K.blank(K.list()[0], K.draft);
         K.render();
       }
     }).catch(function(){});
@@ -1080,22 +1093,22 @@ var K = {
   render: function(){
     var body = $(o.body); body.innerHTML = "";
     var d = K.draft, t = K.tpl();
-    if(!K.tpls.length){
+    if(!K.list().length){
       var c = J.el("div", "card soon");
-      c.append(J.el("b", "", "還沒有抽查範本"),
-               J.el("p", "", state.key ? "電腦排程會把「抽查範本」資料夾裡的 Word 範本清單送過來，請稍候或確認電腦有開著。" : "請先到設定貼上密鑰。"));
+      c.append(J.el("b", "", o.emptyTitle || "還沒有抽查範本"),
+               J.el("p", "", state.key ? (o.emptyText || "電腦排程會把「抽查範本」資料夾裡的 Word 範本清單送過來，請稍候或確認電腦有開著。") : "請先到設定貼上密鑰。"));
       body.appendChild(c); $(o.dock).hidden = true; K.renderJobs(body); return;
     }
     $(o.dock).hidden = state.view !== o.view;
 
     // 範本與基本資料
-    var a = J.section(body, "抽查表", "FORM");
+    var a = J.section(body, o.sectionLabel || "抽查表", "FORM");
     var l0 = J.el("label", "kfield"); l0.appendChild(J.el("span", "", o.formLabel || "抽查紀錄表"));
     var sel = J.el("select");
-    K.tpls.forEach(function(x){ sel.appendChild(new Option(x.title, x.id)); });
+    K.list().forEach(function(x){ sel.appendChild(new Option(x.title, x.id)); });
     sel.value = d.template;
     sel.onchange = function(){
-      var nt = K.tpls.filter(function(x){ return x.id === sel.value; })[0];
+      var nt = K.list().filter(function(x){ return x.id === sel.value; })[0];
       var keepPhotos = d.photos;
       K.draft = K.blank(nt, d); K.draft.photos = keepPhotos; K.draft.date = d.date; K.draft.dateSetOn = d.dateSetOn; K.draft.number = d.number; K.draft.content = d.content;
       K.save(); K.render();
@@ -1263,6 +1276,16 @@ return K;
 // 施工抽查（抽查驗紀錄）與職安抽查：同一套程式，範本、雲端資料夾、產生的工程資料夾不同
 var K = makeInspector({ view: "inspect", kind: "抽查", body: "kBody", cam: "kCam", pick: "kPick", dock: "kDock", send: "kSendBtn", tplKey: "ktpls", draftPrefix: "draft|" });
 var S = makeInspector({ view: "safety", kind: "職安", body: "sBody", cam: "sCam", pick: "sPick", dock: "sDock", send: "sSendBtn", tplKey: "stpls", draftPrefix: "draft|職安|" });
+// 自主檢查表：多納里等3案的施工暨品質計畫 表5-15～5-22，產生到 4.查驗\\4.4自主檢查資料；檢查項目印出來手寫
+var C = makeInspector({ view: "check", kind: "自主", body: "cBody", cam: "cCam", pick: "cPick", dock: "cDock", send: "cSendBtn", tplKey: "ctpls", draftPrefix: "draft|自主|",
+  formLabel: "自主檢查表", sectionLabel: "自主檢查表", capHint: "這張另外寫（空白＝用上面的檢查內容）",
+  emptyTitle: "這個工程還沒有自主檢查表", emptyText: "目前只有「多納里等3案改善工程」有自主檢查表。其他工程請把範本給我，就能加上去。",
+  fields: [
+    ["分項工程名稱", "subItem", "例：排水溝工程"],
+    ["檢查位置", "location", "例：工區二 0K+020"],
+    ["檢查項目（照片說明用）", "subject", null],
+    ["檢查內容（照片說明用，每張都套用）", "content", "例：鋼筋間距 20cm、保護層符合"]
+  ] });
 // 材料抽驗：材料設備品質抽驗紀錄表，產生到 4.查驗\4.1材料抽查驗
 var M = makeInspector({ view: "material", kind: "材料", body: "mBody", cam: "mCam", pick: "mPick", dock: "mDock", send: "mSendBtn", tplKey: "mtpls", draftPrefix: "draft|材料|",
   formLabel: "抽驗紀錄表", dateLabel: "進場日期", photoTitle: "材料抽驗查證照片", capHint: "這張另外寫（空白＝用上面的抽驗內容）",
@@ -1293,7 +1316,7 @@ db.all().then(function(all){
   renderList();
   showView(state.view);
   if(!state.key) openSheet();
-  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); M.run(); }
+  else { loadOptions(); run(); J.flushAll(); K.run(); S.run(); M.run(); C.run(); }
 });
 
 if("serviceWorker" in navigator){
