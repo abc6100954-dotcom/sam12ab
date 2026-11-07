@@ -413,7 +413,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.11.07.4";
+var APP_VERSION = "2026.11.07.5";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -1321,7 +1321,7 @@ var K = makeInspector({ view: "inspect", kind: "抽查", body: "kBody", cam: "kC
 var S = makeInspector({ view: "safety", kind: "職安", body: "sBody", cam: "sCam", pick: "sPick", dock: "sDock", send: "sSendBtn", tplKey: "stpls", draftPrefix: "draft|職安|" });
 // 自主檢查表：多納里等3案的施工暨品質計畫 表5-15～5-22，產生到 4.查驗\\4.4自主檢查資料；檢查項目印出來手寫
 var C = makeInspector({ view: "check", kind: "自主", body: "cBody", cam: "cCam", pick: "cPick", dock: "cDock", send: "cSendBtn", tplKey: "ctpls", draftPrefix: "draft|自主|",
-  formLabel: "自主檢查表", sectionLabel: "自主檢查表", capHint: "這張另外寫（空白＝用上面的檢查內容）",
+  formLabel: "自主檢查表", sectionLabel: "自主檢查表", photoTitle: "施工照片", capHint: "這張另外寫（空白＝用上面的檢查內容）",
   emptyTitle: "這個工程還沒有自主檢查表", emptyText: "目前只有「多納里等3案改善工程」有自主檢查表。其他工程請把範本給我，就能加上去。",
   fields: [
     ["分項工程名稱", "subItem", "例：排水溝工程"],
