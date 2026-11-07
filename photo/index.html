@@ -166,15 +166,15 @@ input[type=file]{display:none}
   border:1px solid var(--rule);border-radius:10px;background:var(--surface2)}
 .qty input:not(:placeholder-shown){border-color:var(--accent);background:var(--accent-soft)}
 .qty .u{width:30px;flex:none;font-size:12px;color:var(--ink3)}
-/* 施工項目：項目｜本日｜累計 */
-.qty.it{display:grid;grid-template-columns:minmax(0,1fr) 76px 68px;gap:8px;align-items:center}
-.qty.it input{width:100%}
-.qty .cum{text-align:right;font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;line-height:1.25}
+/* 施工項目：項目｜本日｜累計｜合約 */
+.qty.it{display:grid;grid-template-columns:minmax(0,1fr) 66px 58px 58px;gap:6px;align-items:center}
+.qty.it input{width:100%;padding:8px 6px}
+.qty .cum{text-align:right;font-family:var(--mono);font-size:13px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;line-height:1.25}
 .qty .cum small{display:block;font-size:10px;color:var(--ink3)}
 .qty .auto{text-align:center;font-size:12px;color:var(--ink3)}
-.qhead{display:grid;grid-template-columns:minmax(0,1fr) 76px 68px;gap:8px;font-size:11px;color:var(--ink3);
+.qhead{display:grid;grid-template-columns:minmax(0,1fr) 66px 58px 58px;gap:6px;font-size:11px;color:var(--ink3);
   letter-spacing:.08em;padding:0 0 4px;border-bottom:1px solid var(--rule)}
-.qhead span:nth-child(2){text-align:center} .qhead span:nth-child(3){text-align:right}
+.qhead span:nth-child(2){text-align:center} .qhead span:nth-child(3),.qhead span:nth-child(4){text-align:right}
 details.grp{border-top:1px solid var(--rule)}
 details.grp:first-of-type{border-top:0}
 details.grp summary{list-style:none;cursor:pointer;padding:12px 0;font-weight:500;display:flex;align-items:center;gap:8px}
@@ -413,7 +413,7 @@ select.sel{width:100%;border:1px solid var(--rule);border-radius:10px;background
 (function(){
 "use strict";
 
-var APP_VERSION = "2026.11.07.3";
+var APP_VERSION = "2026.11.07.4";
 // 照片一律存進這個類別（使用者 2026-09-26 要求拿掉類別選單）
 var FIXED_CATEGORY = "6.2施工中";
 // Apps Script 網頁應用程式網址（存取權「任何人」，靠密鑰把關）
@@ -881,7 +881,7 @@ var J = {
     return row;
   },
 
-  // 施工項目一列：項目（項次、契約數量）｜本日（輸入）｜累計（這天之前 Excel 已有的＋本日）
+  // 施工項目一列：項目（項次）｜本日（輸入）｜累計（這天之前 Excel 已有的＋本日）｜合約數量
   fmt: function(v){
     var r = Math.round(v * 1000) / 1000;
     return r.toLocaleString("en-US", { maximumFractionDigits: 3 });
@@ -894,8 +894,11 @@ var J = {
   itemRow: function(it, map){
     var row = J.el("div", "qty it");
     var nm = J.el("div", "nm", it.name);
-    nm.appendChild(J.el("i", "", it.no + "　契約 " + it.qty + " " + it.unit));
+    nm.appendChild(J.el("i", "", it.no));
     var cum = J.el("div", "cum");
+    var q = Number(String(it.qty).replace(/,/g, ""));
+    var con = J.el("div", "cum", isNaN(q) ? it.qty : J.fmt(q));
+    con.appendChild(J.el("small", "", it.unit));
     var paint = function(){
       cum.textContent = J.fmt(J.cum(it, map));
       cum.appendChild(J.el("small", "", it.unit));
@@ -916,7 +919,7 @@ var J = {
       };
     }
     paint();
-    row.append(nm, mid, cum);
+    row.append(nm, mid, cum, con);
     row.dataset.search = (it.name + " " + it.no).toLowerCase();
     return row;
   },
@@ -970,7 +973,7 @@ var J = {
       var sm = J.el("summary", "", g.name); sm.appendChild(J.el("span", "n", ""));
       det.appendChild(sm);
       var hd = J.el("div", "qhead");
-      hd.append(J.el("span", "", "項目"), J.el("span", "", "本日"), J.el("span", "", "累計"));
+      hd.append(J.el("span", "", "項目"), J.el("span", "", "本日"), J.el("span", "", "累計"), J.el("span", "", "合約"));
       det.appendChild(hd);
       g.items.forEach(function(it){ det.appendChild(J.itemRow(it, d.qty)); });
       if(g.items.some(function(it){ return d.qty[it.key] != null; })) det.open = true;
